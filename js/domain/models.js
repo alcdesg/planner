@@ -1,6 +1,6 @@
 /**
  * @file models.js
- * Domain entities, constants, and date utilities for Organizador Semanal.
+ * Domain entities, constants, and robust date utilities for Organizador Semanal.
  */
 
 export const CATEGORIES = {
@@ -57,7 +57,7 @@ export function generateId() {
 }
 
 /**
- * Date helper utilities (Standardizing with Monday as start of week)
+ * Robust date helper utilities (Standardizing with Monday as start of week, operating at noon to avoid timezone shifts)
  */
 export const DateUtils = {
   /**
@@ -85,10 +85,10 @@ export const DateUtils = {
    */
   getMondayOfWeek(date) {
     const d = new Date(date);
+    d.setHours(12, 0, 0, 0);
     const day = d.getDay(); // 0 is Sunday, 1 is Monday...
     const diff = (day === 0 ? -6 : 1) - day;
     d.setDate(d.getDate() + diff);
-    d.setHours(0, 0, 0, 0);
     return d;
   },
 
@@ -98,6 +98,7 @@ export const DateUtils = {
   getWeekDays(startMonday) {
     const days = [];
     const monday = new Date(startMonday);
+    monday.setHours(12, 0, 0, 0);
     for (let i = 0; i < 7; i++) {
       const nextDay = new Date(monday);
       nextDay.setDate(monday.getDate() + i);

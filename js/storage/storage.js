@@ -21,7 +21,7 @@ export const StorageService = {
       console.error('Failed to load users from localStorage', e);
     }
 
-    // Default users on first launch
+    // Default users on initial launch
     const defaultUsers = [
       { id: 'usr_alcides', name: 'Alcides', avatarInitial: 'A' },
       { id: 'usr_paula', name: 'Paula', avatarInitial: 'P' }
@@ -62,15 +62,21 @@ export const StorageService = {
     try {
       const key = `${STORAGE_PREFIX}:user:${userId}:activities`;
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         return JSON.parse(data);
       }
     } catch (e) {
       console.error(`Failed to load activities for user ${userId}`, e);
     }
 
-    // Initialize with friendly sample activities for new users
-    return this.getInitialSampleActivities(userId);
+    // For the initial default users, load demo sample activities on very first launch
+    if (userId === 'usr_alcides' || userId === 'usr_paula') {
+      return this.getInitialSampleActivities(userId);
+    }
+
+    // Any new user created starts with empty list
+    this.saveActivities(userId, []);
+    return [];
   },
 
   /**
@@ -112,7 +118,7 @@ export const StorageService = {
   },
 
   /**
-   * Initial activities for a new user's first experience
+   * Initial activities for default user's first experience
    */
   getInitialSampleActivities(userId) {
     const today = new Date();
@@ -157,7 +163,8 @@ export const StorageService = {
           time: '18:30',
           category: 'saude',
           status: 'pending',
-          recurrence: RECURRENCE_TYPES.WEEKDAYS,
+          recurrence: RECURRENCE_TYPES.CUSTOM_DAYS,
+          recurrenceDays: [1, 3, 5], // Seg, Qua, Sex
           completedDates: [],
           createdAt: new Date().toISOString()
         },

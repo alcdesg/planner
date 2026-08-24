@@ -1,6 +1,7 @@
 /**
  * @file weekView.js
- * Weekly Board View controller (7 columns on desktop, responsive day tab navigation on mobile).
+ * Weekly Board View controller.
+ * Implements clean Weekly Board layout (vertical card stack with metadata badges, no rigid time grid).
  */
 
 import { CATEGORIES, DateUtils, RECURRENCE_TYPES } from '../domain/models.js';
@@ -52,17 +53,13 @@ export const WeekView = {
       </div>
     `;
 
-    // 7 Day Columns HTML
+    // 7 Day Columns HTML (Unified vertical card stack as Weekly Board)
     const columnsHtml = weekDays.map((day, idx) => {
       const dateKey = DateUtils.formatDateKey(day);
       const isToday = DateUtils.isSameDay(day, todayDate);
       const shortName = DateUtils.dayNamesShort[idx];
       const dayNumber = day.getDate();
       const dayActivities = resolvedMap.get(dateKey) || [];
-
-      // Split into untimed and timed
-      const untimed = dayActivities.filter(a => !a.time);
-      const timed = dayActivities.filter(a => !!a.time);
 
       const isMobileActive = idx === activeMobileDayIndex;
 
@@ -72,32 +69,24 @@ export const WeekView = {
             <div class="day-meta">
               <span class="day-name">${shortName}</span>
               <span class="day-number">${dayNumber}</span>
+              ${isToday ? '<span class="today-indicator-pill">Hoje</span>' : ''}
             </div>
-            <button type="button" class="day-add-btn" data-add-date="${dateKey}" title="Adicionar atividade em ${shortName}" aria-label="Adicionar">+</button>
+            <button type="button" class="day-add-icon-btn" data-add-date="${dateKey}" title="Adicionar atividade em ${shortName}" aria-label="Adicionar">+</button>
           </div>
 
           <div class="day-body">
-            <!-- Sem Horário Area -->
-            <div class="untimed-section">
-              <div class="untimed-header">
-                <span>Sem Horário</span>
-                <span>${untimed.length ? `(${untimed.length})` : ''}</span>
-              </div>
-              <div class="untimed-list">
-                ${untimed.map(act => this.renderActivityCard(act, dateKey)).join('')}
-              </div>
+            <div class="day-card-stack">
+              ${dayActivities.length > 0 ? dayActivities.map(act => this.renderActivityCard(act, dateKey)).join('') : `
+                <div class="day-empty-placeholder" data-add-date="${dateKey}">
+                  <span>Sem atividades</span>
+                </div>
+              `}
             </div>
 
-            <!-- Timed Activities Area -->
-            <div class="timed-section">
-              <div class="timed-list">
-                ${timed.map(act => this.renderActivityCard(act, dateKey)).join('')}
-              </div>
-
-              ${untimed.length === 0 && timed.length === 0 ? `
-                <div class="day-empty-hint">Nenhuma atividade agendada</div>
-              ` : ''}
-            </div>
+            <!-- Evident contextual Add button at footer of column -->
+            <button type="button" class="day-add-footer-btn" data-add-date="${dateKey}">
+              <span>+ Adicionar</span>
+            </button>
           </div>
         </div>
       `;
@@ -122,7 +111,7 @@ export const WeekView = {
       <div class="activity-card ${isCompleted ? 'completed' : ''}" data-id="${activity.id}" data-occurrence-date="${dateKey}" tabindex="0" role="button" aria-label="${activity.title}">
         <div class="activity-card-header">
           <button type="button" class="activity-check-btn" data-check-id="${activity.id}" data-occurrence-date="${dateKey}" title="${isCompleted ? 'Desmarcar' : 'Concluir'}">
-            ✓
+            ${isCompleted ? '✓' : ''}
           </button>
           <span class="activity-title">${this.escapeHtml(activity.title)}</span>
         </div>
@@ -149,7 +138,7 @@ export const WeekView = {
   },
 
   attachEvents() {
-    // Add button on day headers
+    // Add buttons on day headers, placeholders, and footer buttons
     this.container.querySelectorAll('[data-add-date]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -170,6 +159,7 @@ export const WeekView = {
     this.container.querySelectorAll('.activity-check-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const id = e.currentTarget.dataset.checkId;
         const occurrenceDate = e.currentTarget.dataset.occurrenceDate;
         store.toggleActivityCompletion(id, occurrenceDate);

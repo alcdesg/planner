@@ -1,6 +1,7 @@
 /**
  * @file todayView.js
- * Today Focused View controller (concentrated view of today's activities).
+ * Today Focused View controller.
+ * Concentrated clean daily view aligned with the Weekly Board card stack philosophy.
  */
 
 import { CATEGORIES, DateUtils, RECURRENCE_TYPES } from '../domain/models.js';
@@ -36,9 +37,6 @@ export const TodayView = {
     const resolvedMap = RecurrenceEngine.resolveWeekActivities(activities, [todayDate]);
     const todayActivities = resolvedMap.get(dateKey) || [];
 
-    const untimed = todayActivities.filter(a => !a.time);
-    const timed = todayActivities.filter(a => !!a.time);
-
     const completedCount = todayActivities.filter(a => a.isCompleted).length;
     const totalCount = todayActivities.length;
 
@@ -66,31 +64,14 @@ export const TodayView = {
           </div>
         </div>
 
-        <div class="today-blocks">
-          <!-- Sem Horário Block -->
-          <div class="today-block-card">
-            <div class="today-block-title">
-              <span>📌</span>
-              <span>Sem Horário Definido (${untimed.length})</span>
-            </div>
-            <div class="untimed-list">
-              ${untimed.length > 0 ? untimed.map(act => this.renderCard(act, dateKey)).join('') : `
-                <div class="day-empty-hint">Nenhuma atividade sem horário para hoje</div>
-              `}
-            </div>
-          </div>
-
-          <!-- Com Horário Block -->
-          <div class="today-block-card">
-            <div class="today-block-title">
-              <span>🕒</span>
-              <span>Compromissos & Atividades com Horário (${timed.length})</span>
-            </div>
-            <div class="timed-list">
-              ${timed.length > 0 ? timed.map(act => this.renderCard(act, dateKey)).join('') : `
-                <div class="day-empty-hint">Nenhum compromisso com horário para hoje</div>
-              `}
-            </div>
+        <div class="today-block-card">
+          <div class="day-card-stack">
+            ${todayActivities.length > 0 ? todayActivities.map(act => this.renderCard(act, dateKey)).join('') : `
+              <div class="day-empty-placeholder" id="today-empty-add-trigger">
+                <span>Nenhuma atividade para hoje</span>
+                <span style="font-size: 0.8rem; color: var(--color-primary); font-weight: 600;">+ Toque para adicionar</span>
+              </div>
+            `}
           </div>
         </div>
       </div>
@@ -108,7 +89,7 @@ export const TodayView = {
       <div class="activity-card ${isCompleted ? 'completed' : ''}" data-id="${activity.id}" data-occurrence-date="${dateKey}" tabindex="0" role="button" aria-label="${activity.title}">
         <div class="activity-card-header">
           <button type="button" class="activity-check-btn" data-check-id="${activity.id}" data-occurrence-date="${dateKey}" title="${isCompleted ? 'Desmarcar' : 'Concluir'}">
-            ✓
+            ${isCompleted ? '✓' : ''}
           </button>
           <span class="activity-title">${this.escapeHtml(activity.title)}</span>
         </div>
@@ -142,9 +123,17 @@ export const TodayView = {
       });
     }
 
+    const emptyTrigger = this.container.querySelector('#today-empty-add-trigger');
+    if (emptyTrigger) {
+      emptyTrigger.addEventListener('click', () => {
+        ActivityModal.openNew(todayDateKey);
+      });
+    }
+
     this.container.querySelectorAll('.activity-check-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const id = e.currentTarget.dataset.checkId;
         const occurrenceDate = e.currentTarget.dataset.occurrenceDate;
         store.toggleActivityCompletion(id, occurrenceDate);
