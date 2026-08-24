@@ -1,7 +1,7 @@
 /**
  * @file weekView.js
  * Weekly Board View controller.
- * Implements clean Weekly Board layout (vertical card stack with metadata badges, no rigid time grid).
+ * Implements clean Weekly Board layout and Drag & Drop for non-recurring activities between days.
  */
 
 import { CATEGORIES, DateUtils, RECURRENCE_TYPES } from '../domain/models.js';
@@ -107,8 +107,20 @@ export const WeekView = {
     const isCompleted = !!activity.isCompleted;
     const isRecurring = activity.recurrence && activity.recurrence !== RECURRENCE_TYPES.NONE;
 
+    // Only non-recurring activities are draggable
+    const isDraggable = !isRecurring;
+
     return `
-      <div class="activity-card ${isCompleted ? 'completed' : ''}" data-id="${activity.id}" data-occurrence-date="${dateKey}" tabindex="0" role="button" aria-label="${activity.title}">
+      <div
+        class="activity-card ${isCompleted ? 'completed' : ''} ${isDraggable ? 'draggable-card' : ''}"
+        data-id="${activity.id}"
+        data-occurrence-date="${dateKey}"
+        tabindex="0"
+        role="button"
+        ${isDraggable ? 'draggable="true"' : ''}
+        aria-label="${activity.title}"
+        title="${isDraggable ? 'Arraste para mover para outro dia' : ''}"
+      >
         <div class="activity-card-header">
           <button type="button" class="activity-check-btn" data-check-id="${activity.id}" data-occurrence-date="${dateKey}" title="${isCompleted ? 'Desmarcar' : 'Concluir'}">
             ${isCompleted ? '✓' : ''}
@@ -168,7 +180,7 @@ export const WeekView = {
       });
     });
 
-    // Card click opens edit modal passing occurrenceDate
+    // Card click opens edit modal
     this.container.querySelectorAll('.activity-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.activity-check-btn')) return;
@@ -183,6 +195,64 @@ export const WeekView = {
           const id = card.dataset.id;
           const occurrenceDate = card.dataset.occurrenceDate;
           ActivityModal.openEdit(id, occurrenceDate);
+        }
+      });
+    });
+
+    // ----------------------------------------------------------------------
+    // Drag & Drop Implementation (Exclusive to Non-Recurring Activities)
+    // ----------------------------------------------------------------------
+    this.container.querySelectorAll('.draggable-card').forEach(card => {
+      card.addEventListener('dragstart', (e) => {
+        const id = card.dataset.id;
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.effectAllowed = 'move';
+        setTimeout(() => {
+          card.classList.add('is-dragging');
+        }, 10);
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('is-dragging');
+        this.container.querySelectorAll('.day-column.drag-over').forEach(col => {
+          col.classList.remove('drag-over');
+        });
+      });
+    });
+
+    this.container.querySelectorAll('.day-column').forEach(column => {
+      column.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!column.classList.contains('drag-over')) {
+          column.classList.add('drag-over');
+        }
+      });
+
+      column.addEventListener('dragleave', (e) => {
+        // Only remove if leaving the column boundary
+        if (!column.contains(e.relatedTarget)) {
+          column.classList.remove('drag-over');
+        }
+      });
+
+      column.addEventListener('drop', (e) => {
+        e.preventDefault();
+        column.classList.remove('drag-over');
+
+        const activityId = e.dataTransfer.getData('text/plain');
+        const targetDate = column.dataset.date;
+
+        if (activityId && targetDate) {
+          const state = store.getState();
+          const activity = state.activities.find(a => a.id === activityId);
+
+          // Only move if it is a non-recurring activity and target is different
+          if (activity && (!activity.recurrence || activity.recurrence === RECURRENCE_TYPES.NONE)) {
+            if (activity.date !== targetDate) {
+              store.updateActivity(activityId, { date: targetDate }, 'all');
+            }
+          }
         }
       });
     });

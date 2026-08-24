@@ -343,6 +343,13 @@ select:focus-visible {
   background-color: var(--bg-day-today);
 }
 
+/* Drag & Drop Highlight on Drop Target */
+.day-column.drag-over {
+  border: 2px dashed var(--color-primary) !important;
+  background-color: var(--color-primary-light) !important;
+  transform: scale(1.01);
+}
+
 /* Day Header */
 .day-header {
   padding: var(--space-xs) var(--space-sm);
@@ -477,12 +484,29 @@ select:focus-visible {
   cursor: pointer;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
   position: relative;
+  user-select: none;
 }
 
 .activity-card:hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-focus);
+}
+
+.activity-card.draggable-card {
+  cursor: grab;
+  cursor: -webkit-grab;
+}
+
+.activity-card.draggable-card:active {
+  cursor: grabbing;
+  cursor: -webkit-grabbing;
+}
+
+.activity-card.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.97);
+  box-shadow: var(--shadow-lg);
 }
 
 .activity-card.completed {
@@ -842,29 +866,23 @@ select:focus-visible {
   background-color: rgba(239, 68, 68, 0.1);
 }
 
-/* Scope Decision Options */
-.scope-options-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.scope-option-btn {
+/* Outlook Prompt Choice Buttons */
+.prompt-choice-btn {
   padding: 12px 14px;
   border-radius: var(--radius-md);
   border: 1.5px solid var(--border-default);
   background-color: var(--bg-surface-secondary);
-  text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
   transition: all var(--transition-fast);
+  width: 100%;
 }
 
-.scope-option-btn:hover {
+.prompt-choice-btn:hover {
   border-color: var(--color-primary);
   background-color: var(--color-primary-light);
+  transform: translateY(-1px);
 }
 
 /* --------------------------------------------------------------------------
