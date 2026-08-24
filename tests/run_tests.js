@@ -1,7 +1,7 @@
 /**
  * @file run_tests.js
  * Automated test suite for Organizador Semanal.
- * Verifies domain models, date parsing in GMT-3, recurrence resolution, and storage logic.
+ * Verifies domain models, date parsing in GMT-3, recurrence resolution, overrides, and storage logic.
  */
 
 import { DateUtils, RECURRENCE_TYPES, generateId } from '../js/domain/models.js';
@@ -27,7 +27,7 @@ console.log('======================================================\n');
 // --------------------------------------------------------------------------
 // TEST GROUP 1: DateUtils & Timezone Safety
 // --------------------------------------------------------------------------
-console.log('[1/4] Testando Utilitários de Data e Imunidade a Fuso Horário...');
+console.log('[1/5] Testando Utilitários de Data e Imunidade a Fuso Horário...');
 
 const dateStr = '2026-08-24'; // Segunda-feira
 const formatted = DateUtils.formatDateKey(dateStr);
@@ -52,7 +52,7 @@ assert(!DateUtils.isSameDay('2026-08-24', '2026-08-25'), 'isSameDay("2026-08-24"
 // --------------------------------------------------------------------------
 // TEST GROUP 2: Non-recurring activities
 // --------------------------------------------------------------------------
-console.log('\n[2/4] Testando Criação e Exibição de Atividades Simples (Sem Recorrência)...');
+console.log('\n[2/5] Testando Criação e Exibição de Atividades Simples (Sem Recorrência)...');
 
 const singleActivity = {
   id: generateId(),
@@ -76,7 +76,7 @@ assert(wednesdayActivities[0].title === 'Consulta Médica', 'Título da atividad
 // --------------------------------------------------------------------------
 // TEST GROUP 3: Outlook-style custom weekday recurrence & end dates
 // --------------------------------------------------------------------------
-console.log('\n[3/4] Testando Recorrência Estilo Outlook (Dias Específicos e Data Limite)...');
+console.log('\n[3/5] Testando Recorrência Estilo Outlook (Dias Específicos e Data Limite)...');
 
 // Exemplo: Terças (2), Quartas (3) e Quintas (4) a partir de 24/08 até 28/08
 const recurringActivity = {
@@ -89,24 +89,39 @@ const recurringActivity = {
   recurrence: RECURRENCE_TYPES.CUSTOM_DAYS,
   recurrenceDays: [2, 3, 4], // Ter, Qua, Qui
   recurrenceEndDate: '2026-08-28', // Repetir até sexta 28/08
-  completedDates: ['2026-08-25'] // Terça marcada como concluída
+  completedDates: ['2026-08-25'], // Terça marcada como concluída
+  overrides: {
+    '2026-08-26': { title: 'Treino Especial', time: '19:00' } // Override pontual na Quarta
+  },
+  deletedDates: ['2026-08-27'] // Quinta cancelada individualmente
 };
 
 assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-24'), 'NÃO deve ocorrer na Segunda (24/08)');
 assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-25'), 'DEVE ocorrer na Terça (25/08)');
 assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-26'), 'DEVE ocorrer na Quarta (26/08)');
-assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'DEVE ocorrer na Quinta (27/08)');
+assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'NÃO deve ocorrer na Quinta (27/08) pois foi excluída individualmente');
 assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-28'), 'NÃO deve ocorrer na Sexta (28/08) pois não está em recurrenceDays');
 assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-09-01'), 'NÃO deve ocorrer em 01/09 pois é após recurrenceEndDate (28/08)');
 
+// --------------------------------------------------------------------------
+// TEST GROUP 4: Single Occurrence Overrides
+// --------------------------------------------------------------------------
+console.log('\n[4/5] Testando Overrides de Ocorrência Individual...');
+
 const recurringMap = RecurrenceEngine.resolveWeekActivities([recurringActivity], weekDays);
-assert(recurringMap.get('2026-08-25')[0].isCompleted === true, 'Ocorrência de Terça (25/08) deve constar como CONCLUÍDA');
-assert(recurringMap.get('2026-08-26')[0].isCompleted === false, 'Ocorrência de Quarta (26/08) deve constar como PENDENTE');
+const wednesdayOccur = recurringMap.get('2026-08-26')[0];
+assert(wednesdayOccur.title === 'Treino Especial', 'Título na quarta-feira deve ter o override "Treino Especial"');
+assert(wednesdayOccur.time === '19:00', 'Horário na quarta-feira deve ter o override "19:00"');
+
+const tuesdayOccur = recurringMap.get('2026-08-25')[0];
+assert(tuesdayOccur.title === 'Treino Funcional', 'Título na terça-feira deve permanecer "Treino Funcional"');
+assert(tuesdayOccur.time === '18:00', 'Horário na terça-feira deve permanecer "18:00"');
+assert(tuesdayOccur.isCompleted === true, 'Terça consta como concluída');
 
 // --------------------------------------------------------------------------
-// TEST GROUP 4: Storage Structure & Backup
+// TEST GROUP 5: Storage Structure & Backup
 // --------------------------------------------------------------------------
-console.log('\n[4/4] Testando Estrutura de Exportação e Formato de Dados...');
+console.log('\n[5/5] Testando Estrutura de Exportação e Formato de Dados...');
 
 const backupObj = {
   version: '1.1',

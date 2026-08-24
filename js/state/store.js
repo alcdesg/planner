@@ -1,6 +1,7 @@
 /**
  * @file store.js
  * Central reactive application state manager.
+ * Supports granular editing/deleting of recurring activities (single occurrence vs entire series).
  */
 
 import { generateId, DateUtils, RECURRENCE_TYPES, ACTIVITY_STATUS } from '../domain/models.js';
@@ -183,6 +184,8 @@ class AppStore {
       recurrenceDays: data.recurrenceDays || [],
       recurrenceEndDate: data.recurrenceEndDate || '',
       completedDates: [],
+      overrides: {},
+      deletedDates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -193,25 +196,76 @@ class AppStore {
     return newActivity;
   }
 
-  updateActivity(id, data) {
+  /**
+   * Update activity: can target only a specific occurrence or the entire recurring series
+   * @param {string} id - Activity ID
+   * @param {Object} data - Updated fields
+   * @param {string} scope - 'this' (single occurrence) | 'all' (entire series)
+   * @param {string} occurrenceDate - YYYY-MM-DD
+   */
+  updateActivity(id, data, scope = 'all', occurrenceDate = null) {
     this.activities = this.activities.map(act => {
-      if (act.id === id) {
+      if (act.id !== id) return act;
+
+      // Single occurrence override
+      if (scope === 'this' && occurrenceDate && act.recurrence && act.recurrence !== RECURRENCE_TYPES.NONE) {
+        const overrides = act.overrides || {};
+        overrides[occurrenceDate] = {
+          title: (data.title || act.title).trim(),
+          time: data.time !== undefined ? data.time : act.time,
+          category: data.category || act.category
+        };
+
         return {
           ...act,
-          ...data,
-          title: (data.title || act.title).trim(),
+          overrides: { ...overrides },
           updatedAt: new Date().toISOString()
         };
       }
-      return act;
+
+      // Entire series update
+      return {
+        ...act,
+        ...data,
+        title: (data.title || act.title).trim(),
+        updatedAt: new Date().toISOString()
+      };
     });
 
     StorageService.saveActivities(this.activeUserId, this.activities);
     this.notify();
   }
 
-  deleteActivity(id) {
-    this.activities = this.activities.filter(act => act.id !== id);
+  /**
+   * Delete activity: can target only a specific occurrence or the entire recurring series
+   * @param {string} id - Activity ID
+   * @param {string} scope - 'this' (single occurrence) | 'all' (entire series)
+   * @param {string} occurrenceDate - YYYY-MM-DD
+   */
+  deleteActivity(id, scope = 'all', occurrenceDate = null) {
+    if (scope === 'this' && occurrenceDate) {
+      this.activities = this.activities.map(act => {
+        if (act.id !== id) return act;
+
+        if (act.recurrence && act.recurrence !== RECURRENCE_TYPES.NONE) {
+          const deletedDates = new Set(act.deletedDates || []);
+          deletedDates.add(occurrenceDate);
+          return {
+            ...act,
+            deletedDates: Array.from(deletedDates),
+            updatedAt: new Date().toISOString()
+          };
+        }
+        return act;
+      }).filter(act => {
+        // If non-recurring, it is deleted directly
+        return act.recurrence && act.recurrence !== RECURRENCE_TYPES.NONE ? true : act.id !== id;
+      });
+    } else {
+      // Entire series delete
+      this.activities = this.activities.filter(act => act.id !== id);
+    }
+
     StorageService.saveActivities(this.activeUserId, this.activities);
     this.notify();
   }

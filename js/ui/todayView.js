@@ -108,7 +108,9 @@ export const TodayView = {
           ` : ''}
 
           ${isRecurring ? `
-            <span class="recurrence-badge" title="Recorrente">🔁</span>
+            <span class="recurrence-badge" title="Recorrente ${activity.isOverridden ? '(modificado)' : ''}">
+              🔁${activity.isOverridden ? '*' : ''}
+            </span>
           ` : ''}
         </div>
       </div>
@@ -144,7 +146,8 @@ export const TodayView = {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.activity-check-btn')) return;
         const id = card.dataset.id;
-        ActivityModal.openEdit(id);
+        const occurrenceDate = card.dataset.occurrenceDate;
+        ActivityModal.openEdit(id, occurrenceDate);
       });
     });
   },

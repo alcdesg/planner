@@ -18,7 +18,7 @@
 <body>
   <div class="container">
     <h1>🧪 Organizador Semanal - Testes Automatizados</h1>
-    <p>Verificação de modelos de domínio, datas sem desvio de fuso horário e resolução de recorrência.</p>
+    <p>Verificação de modelos de domínio, datas sem desvio de fuso horário, recorrências, overrides de ocorrência única e exclusões pontuais.</p>
     <div id="output" class="test-log">Executando testes...</div>
     <div id="summary"></div>
   </div>
@@ -51,7 +51,7 @@
       }
     }
 
-    log('[1/4] Testando Utilitários de Data e Imunidade a Fuso Horário...', 'header-group');
+    log('[1/5] Testando Utilitários de Data e Imunidade a Fuso Horário...', 'header-group');
     const dateStr = '2026-08-24';
     assert(DateUtils.formatDateKey(dateStr) === '2026-08-24', 'formatDateKey de "2026-08-24" é "2026-08-24"');
     const parsed = DateUtils.parseDateKey(dateStr);
@@ -62,7 +62,7 @@
     const weekDays = DateUtils.getWeekDays(monday);
     assert(weekDays.length === 7, 'Semana contém 7 dias');
 
-    log('[2/4] Testando Criação e Exibição de Atividades Simples...', 'header-group');
+    log('[2/5] Testando Criação e Exibição de Atividades Simples...', 'header-group');
     const singleActivity = {
       id: generateId(),
       userId: 'usr_test',
@@ -75,7 +75,7 @@
     assert(RecurrenceEngine.occursOnDate(singleActivity, '2026-08-26'), 'Atividade simples ocorre exatamente em 2026-08-26');
     assert(!RecurrenceEngine.occursOnDate(singleActivity, '2026-08-24'), 'Atividade simples NÃO ocorre na segunda 2026-08-24');
 
-    log('[3/4] Testando Recorrência Estilo Outlook (Dias Específicos e Data Limite)...', 'header-group');
+    log('[3/5] Testando Recorrência Estilo Outlook (Dias Específicos e Data Limite)...', 'header-group');
     const recurringActivity = {
       id: generateId(),
       userId: 'usr_test',
@@ -86,18 +86,31 @@
       recurrence: RECURRENCE_TYPES.CUSTOM_DAYS,
       recurrenceDays: [2, 3, 4],
       recurrenceEndDate: '2026-08-28',
-      completedDates: ['2026-08-25']
+      completedDates: ['2026-08-25'],
+      overrides: {
+        '2026-08-26': { title: 'Treino Especial', time: '19:00' }
+      },
+      deletedDates: ['2026-08-27']
     };
     assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-24'), 'NÃO ocorre na Segunda (24/08)');
     assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-25'), 'DEVE ocorrer na Terça (25/08)');
     assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-26'), 'DEVE ocorrer na Quarta (26/08)');
-    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'DEVE ocorrer na Quinta (27/08)');
+    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'NÃO ocorre na Quinta (27/08) pois foi cancelada pontualmente');
     assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-28'), 'NÃO ocorre na Sexta (28/08)');
 
-    log('[4/4] Testando Resolução da Semana Completa...', 'header-group');
+    log('[4/5] Testando Overrides de Ocorrência Individual...', 'header-group');
+    const recurringMap = RecurrenceEngine.resolveWeekActivities([recurringActivity], weekDays);
+    const wednesdayOccur = recurringMap.get('2026-08-26')[0];
+    assert(wednesdayOccur.title === 'Treino Especial', 'Título na quarta-feira possui override "Treino Especial"');
+    assert(wednesdayOccur.time === '19:00', 'Horário na quarta-feira possui override "19:00"');
+
+    const tuesdayOccur = recurringMap.get('2026-08-25')[0];
+    assert(tuesdayOccur.title === 'Treino Funcional', 'Título na terça-feira permanece "Treino Funcional"');
+    assert(tuesdayOccur.isCompleted === true, 'Terça consta como concluída');
+
+    log('[5/5] Testando Resolução da Semana Completa...', 'header-group');
     const resolvedMap = RecurrenceEngine.resolveWeekActivities([singleActivity, recurringActivity], weekDays);
     assert(resolvedMap.get('2026-08-26').length === 2, 'Quarta-feira possui 2 atividades resolvidas');
-    assert(resolvedMap.get('2026-08-25')[0].isCompleted === true, 'Terça consta como concluída');
 
     if (failed === 0) {
       summary.className = 'summary success';

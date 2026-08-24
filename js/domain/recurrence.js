@@ -1,14 +1,14 @@
 /**
  * @file recurrence.js
  * Expands recurring activities deterministically for the visible week/day range.
- * Fully timezone-safe using ISO 8601 YYYY-MM-DD string comparisons.
+ * Supports custom days of the week, optional end date limits, single-occurrence overrides, and single-occurrence exclusions.
  */
 
 import { RECURRENCE_TYPES, DateUtils } from './models.js';
 
 export const RecurrenceEngine = {
   /**
-   * Determine if an activity occurs on targetDate (Date object or YYYY-MM-DD string)
+   * Determine if an activity base rule matches targetDate (Date object or YYYY-MM-DD string)
    * @param {Object} activity - The activity object
    * @param {Date|string} targetDate - The date to check
    * @returns {boolean}
@@ -18,6 +18,12 @@ export const RecurrenceEngine = {
 
     const targetKey = DateUtils.formatDateKey(targetDate);
     const activityDateKey = DateUtils.formatDateKey(activity.date);
+
+    // If this specific date was deleted from the recurring series, it does not occur
+    const deletedDates = Array.isArray(activity.deletedDates) ? activity.deletedDates : [];
+    if (deletedDates.includes(targetKey)) {
+      return false;
+    }
 
     // Non-recurring activity: strict exact date match
     if (!activity.recurrence || activity.recurrence === RECURRENCE_TYPES.NONE) {
@@ -96,10 +102,15 @@ export const RecurrenceEngine = {
             ? completedDates.includes(key)
             : activity.status === 'completed';
 
+          // Apply single-occurrence overrides if present
+          const overrides = (activity.overrides && activity.overrides[key]) ? activity.overrides[key] : {};
+
           const occurrenceInstance = {
             ...activity,
+            ...overrides,
             occurrenceDate: key,
-            isCompleted: !!isCompleted
+            isCompleted: !!isCompleted,
+            isOverridden: !!(activity.overrides && activity.overrides[key])
           };
 
           dayMap.get(key).push(occurrenceInstance);

@@ -130,7 +130,9 @@ export const WeekView = {
           ` : ''}
 
           ${isRecurring ? `
-            <span class="recurrence-badge" title="Recorrente">🔁</span>
+            <span class="recurrence-badge" title="Recorrente ${activity.isOverridden ? '(modificado)' : ''}">
+              🔁${activity.isOverridden ? '*' : ''}
+            </span>
           ` : ''}
         </div>
       </div>
@@ -166,19 +168,21 @@ export const WeekView = {
       });
     });
 
-    // Card click opens edit modal
+    // Card click opens edit modal passing occurrenceDate
     this.container.querySelectorAll('.activity-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.activity-check-btn')) return;
         const id = card.dataset.id;
-        ActivityModal.openEdit(id);
+        const occurrenceDate = card.dataset.occurrenceDate;
+        ActivityModal.openEdit(id, occurrenceDate);
       });
 
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           const id = card.dataset.id;
-          ActivityModal.openEdit(id);
+          const occurrenceDate = card.dataset.occurrenceDate;
+          ActivityModal.openEdit(id, occurrenceDate);
         }
       });
     });
