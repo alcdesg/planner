@@ -1,41 +1,47 @@
 /**
  * @file recurrence.js
  * Expands recurring activities deterministically for the visible week/day range.
- * Supports custom days of the week (Outlook style) and optional end date limits.
+ * Fully timezone-safe using ISO 8601 YYYY-MM-DD string comparisons.
  */
 
 import { RECURRENCE_TYPES, DateUtils } from './models.js';
 
 export const RecurrenceEngine = {
   /**
-   * Determine if a recurring activity occurs on targetDate
+   * Determine if an activity occurs on targetDate (Date object or YYYY-MM-DD string)
    * @param {Object} activity - The activity object
-   * @param {Date} targetDate - The date to check
+   * @param {Date|string} targetDate - The date to check
    * @returns {boolean}
    */
   occursOnDate(activity, targetDate) {
+    if (!activity || !activity.date) return false;
+
+    const targetKey = DateUtils.formatDateKey(targetDate);
+    const activityDateKey = DateUtils.formatDateKey(activity.date);
+
+    // Non-recurring activity: strict exact date match
     if (!activity.recurrence || activity.recurrence === RECURRENCE_TYPES.NONE) {
-      return DateUtils.isSameDay(activity.date, targetDate);
+      return activityDateKey === targetKey;
     }
 
-    const startDate = DateUtils.parseDateKey(activity.date);
-    const target = new Date(targetDate);
-    target.setHours(0, 0, 0, 0);
-    startDate.setHours(0, 0, 0, 0);
+    // If target date is before the activity start date, it does not occur
+    if (targetKey < activityDateKey) {
+      return false;
+    }
 
-    // If target date is before initial start date, it doesn't occur
-    if (target < startDate) return false;
-
-    // Check optional end date ("Repetir até")
+    // If there is an end date ("Repetir até") and target is after end date, it does not occur
     if (activity.recurrenceEndDate) {
-      const endDate = DateUtils.parseDateKey(activity.recurrenceEndDate);
-      endDate.setHours(23, 59, 59, 999);
-      if (target > endDate) return false;
+      const endKey = DateUtils.formatDateKey(activity.recurrenceEndDate);
+      if (targetKey > endKey) {
+        return false;
+      }
     }
+
+    const targetObj = DateUtils.parseDateKey(targetKey);
+    const targetDayIndex = targetObj.getDay(); // 0 is Sun, 1 is Mon...
 
     switch (activity.recurrence) {
       case RECURRENCE_TYPES.CUSTOM_DAYS: {
-        const targetDayIndex = target.getDay(); // 0 is Sun, 1 is Mon...
         const days = Array.isArray(activity.recurrenceDays) ? activity.recurrenceDays : [];
         return days.includes(targetDayIndex);
       }
@@ -44,15 +50,19 @@ export const RecurrenceEngine = {
         return true;
 
       case RECURRENCE_TYPES.WEEKDAYS: {
-        const dayOfWeek = target.getDay(); // 0 is Sun, 6 is Sat
-        return dayOfWeek >= 1 && dayOfWeek <= 5;
+        return targetDayIndex >= 1 && targetDayIndex <= 5;
       }
 
-      case RECURRENCE_TYPES.WEEKLY:
-        return target.getDay() === startDate.getDay();
+      case RECURRENCE_TYPES.WEEKLY: {
+        const startObj = DateUtils.parseDateKey(activityDateKey);
+        return targetDayIndex === startObj.getDay();
+      }
 
-      case RECURRENCE_TYPES.MONTHLY:
-        return target.getDate() === startDate.getDate();
+      case RECURRENCE_TYPES.MONTHLY: {
+        const startDayOfMonth = parseInt(activityDateKey.split('-')[2], 10);
+        const targetDayOfMonth = parseInt(targetKey.split('-')[2], 10);
+        return targetDayOfMonth === startDayOfMonth;
+      }
 
       default:
         return false;
@@ -73,11 +83,14 @@ export const RecurrenceEngine = {
       dayMap.set(key, []);
     });
 
+    if (!Array.isArray(activities)) {
+      return dayMap;
+    }
+
     activities.forEach(activity => {
       weekDays.forEach(day => {
         const key = DateUtils.formatDateKey(day);
         if (this.occursOnDate(activity, day)) {
-          // Check if completion is recorded for this specific occurrence or globally
           const completedDates = activity.completedDates || [];
           const isCompleted = activity.recurrence && activity.recurrence !== RECURRENCE_TYPES.NONE
             ? completedDates.includes(key)

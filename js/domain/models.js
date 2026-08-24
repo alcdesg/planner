@@ -1,6 +1,7 @@
 /**
  * @file models.js
- * Domain entities, constants, and robust date utilities for Organizador Semanal.
+ * Domain entities, constants, and bulletproof ISO date utilities for Organizador Semanal.
+ * Operating in strict ISO YYYY-MM-DD format to guarantee zero timezone offset bugs.
  */
 
 export const CATEGORIES = {
@@ -57,13 +58,19 @@ export function generateId() {
 }
 
 /**
- * Robust date helper utilities (Standardizing with Monday as start of week, operating at noon to avoid timezone shifts)
+ * Robust ISO date helper utilities (Strict YYYY-MM-DD strings with zero timezone offset shifts)
  */
 export const DateUtils = {
   /**
-   * Format a Date object to YYYY-MM-DD string
+   * Format any Date object or string into canonical YYYY-MM-DD string
    */
   formatDateKey(date) {
+    if (!date) return '';
+    if (typeof date === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date;
+      }
+    }
     const d = new Date(date);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -72,23 +79,36 @@ export const DateUtils = {
   },
 
   /**
-   * Parse YYYY-MM-DD into a Date object (local timezone noon to avoid TZ offset shifts)
+   * Parse YYYY-MM-DD safely into local noon Date object
    */
   parseDateKey(dateStr) {
     if (!dateStr) return new Date();
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day, 12, 0, 0);
+    if (dateStr instanceof Date) {
+      const d = new Date(dateStr);
+      d.setHours(12, 0, 0, 0);
+      return d;
+    }
+    const parts = String(dateStr).split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      return new Date(year, month, day, 12, 0, 0);
+    }
+    const d = new Date(dateStr);
+    d.setHours(12, 0, 0, 0);
+    return d;
   },
 
   /**
-   * Get start of week (Monday) for any given date
+   * Get start of week (Monday) for any given date in local time
    */
   getMondayOfWeek(date) {
-    const d = new Date(date);
-    d.setHours(12, 0, 0, 0);
+    const d = this.parseDateKey(date);
     const day = d.getDay(); // 0 is Sunday, 1 is Monday...
     const diff = (day === 0 ? -6 : 1) - day;
     d.setDate(d.getDate() + diff);
+    d.setHours(12, 0, 0, 0);
     return d;
   },
 
@@ -97,40 +117,37 @@ export const DateUtils = {
    */
   getWeekDays(startMonday) {
     const days = [];
-    const monday = new Date(startMonday);
-    monday.setHours(12, 0, 0, 0);
+    const monday = this.parseDateKey(startMonday);
     for (let i = 0; i < 7; i++) {
       const nextDay = new Date(monday);
       nextDay.setDate(monday.getDate() + i);
+      nextDay.setHours(12, 0, 0, 0);
       days.push(nextDay);
     }
     return days;
   },
 
   /**
-   * Check if two dates represent the same calendar day
+   * Check if two dates represent the same calendar day using strict string keys
    */
   isSameDay(date1, date2) {
     if (!date1 || !date2) return false;
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-    return d1.getFullYear() === d2.getFullYear() &&
-           d1.getMonth() === d2.getMonth() &&
-           d1.getDate() === d2.getDate();
+    return this.formatDateKey(date1) === this.formatDateKey(date2);
   },
 
   /**
    * Format week range (e.g. "24 — 30 AGO" or "28 FEV — 06 MAR 2026")
    */
   formatWeekRange(monday) {
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
+    const mon = this.parseDateKey(monday);
+    const sunday = new Date(mon);
+    sunday.setDate(mon.getDate() + 6);
 
     const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-    const startDay = String(monday.getDate()).padStart(2, '0');
+    const startDay = String(mon.getDate()).padStart(2, '0');
     const endDay = String(sunday.getDate()).padStart(2, '0');
 
-    const startMonth = monthNames[monday.getMonth()];
+    const startMonth = monthNames[mon.getMonth()];
     const endMonth = monthNames[sunday.getMonth()];
 
     if (startMonth === endMonth) {
@@ -140,9 +157,6 @@ export const DateUtils = {
     }
   },
 
-  /**
-   * Day of week names for week board
-   */
   dayNamesShort: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'],
   dayNamesFull: ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
 };

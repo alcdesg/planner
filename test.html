@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Organizador Semanal - Test Runner</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 2rem; border: 1px solid #334155; }
+    h1 { margin-top: 0; font-size: 1.5rem; color: #38bdf8; }
+    .test-log { background: #0f172a; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.9rem; line-height: 1.6; border: 1px solid #334155; margin-top: 1rem; }
+    .pass { color: #4ade80; }
+    .fail { color: #f87171; }
+    .header-group { color: #94a3b8; font-weight: bold; margin-top: 0.8rem; }
+    .summary { font-size: 1.2rem; font-weight: bold; margin-top: 1.5rem; padding: 1rem; border-radius: 8px; text-align: center; }
+    .summary.success { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Organizador Semanal - Testes Automatizados</h1>
+    <p>Verificação de modelos de domínio, datas sem desvio de fuso horário e resolução de recorrência.</p>
+    <div id="output" class="test-log">Executando testes...</div>
+    <div id="summary"></div>
+  </div>
+
+  <script type="module">
+    import { DateUtils, RECURRENCE_TYPES, generateId } from './js/domain/models.js';
+    import { RecurrenceEngine } from './js/domain/recurrence.js';
+
+    const out = document.getElementById('output');
+    const summary = document.getElementById('summary');
+    out.innerHTML = '';
+
+    let passed = 0;
+    let failed = 0;
+
+    function log(msg, type = 'info') {
+      const div = document.createElement('div');
+      div.className = type;
+      div.textContent = msg;
+      out.appendChild(div);
+    }
+
+    function assert(condition, message) {
+      if (condition) {
+        log(`✔ PASS: ${message}`, 'pass');
+        passed++;
+      } else {
+        log(`✖ FAIL: ${message}`, 'fail');
+        failed++;
+      }
+    }
+
+    log('[1/4] Testando Utilitários de Data e Imunidade a Fuso Horário...', 'header-group');
+    const dateStr = '2026-08-24';
+    assert(DateUtils.formatDateKey(dateStr) === '2026-08-24', 'formatDateKey de "2026-08-24" é "2026-08-24"');
+    const parsed = DateUtils.parseDateKey(dateStr);
+    assert(parsed.getDate() === 24, 'parseDateKey("2026-08-24").getDate() é 24');
+    assert(parsed.getMonth() === 7, 'parseDateKey("2026-08-24").getMonth() é 7 (Agosto)');
+    const monday = DateUtils.getMondayOfWeek('2026-08-27');
+    assert(DateUtils.formatDateKey(monday) === '2026-08-24', 'Segunda-feira da semana de 27/08 é 24/08');
+    const weekDays = DateUtils.getWeekDays(monday);
+    assert(weekDays.length === 7, 'Semana contém 7 dias');
+
+    log('[2/4] Testando Criação e Exibição de Atividades Simples...', 'header-group');
+    const singleActivity = {
+      id: generateId(),
+      userId: 'usr_test',
+      title: 'Consulta Médica',
+      date: '2026-08-26',
+      time: '14:30',
+      category: 'saude',
+      recurrence: RECURRENCE_TYPES.NONE
+    };
+    assert(RecurrenceEngine.occursOnDate(singleActivity, '2026-08-26'), 'Atividade simples ocorre exatamente em 2026-08-26');
+    assert(!RecurrenceEngine.occursOnDate(singleActivity, '2026-08-24'), 'Atividade simples NÃO ocorre na segunda 2026-08-24');
+
+    log('[3/4] Testando Recorrência Estilo Outlook (Dias Específicos e Data Limite)...', 'header-group');
+    const recurringActivity = {
+      id: generateId(),
+      userId: 'usr_test',
+      title: 'Treino Funcional',
+      date: '2026-08-24',
+      time: '18:00',
+      category: 'saude',
+      recurrence: RECURRENCE_TYPES.CUSTOM_DAYS,
+      recurrenceDays: [2, 3, 4],
+      recurrenceEndDate: '2026-08-28',
+      completedDates: ['2026-08-25']
+    };
+    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-24'), 'NÃO ocorre na Segunda (24/08)');
+    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-25'), 'DEVE ocorrer na Terça (25/08)');
+    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-26'), 'DEVE ocorrer na Quarta (26/08)');
+    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'DEVE ocorrer na Quinta (27/08)');
+    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-28'), 'NÃO ocorre na Sexta (28/08)');
+
+    log('[4/4] Testando Resolução da Semana Completa...', 'header-group');
+    const resolvedMap = RecurrenceEngine.resolveWeekActivities([singleActivity, recurringActivity], weekDays);
+    assert(resolvedMap.get('2026-08-26').length === 2, 'Quarta-feira possui 2 atividades resolvidas');
+    assert(resolvedMap.get('2026-08-25')[0].isCompleted === true, 'Terça consta como concluída');
+
+    if (failed === 0) {
+      summary.className = 'summary success';
+      summary.textContent = `✔ TODOS OS ${passed} TESTES PASSARAM COM SUCESSO!`;
+    } else {
+      summary.className = 'summary fail';
+      summary.textContent = `✖ ${failed} TESTES FALHARAM!`;
+    }
+  </script>
+</body>
+</html>
