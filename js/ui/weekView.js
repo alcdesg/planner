@@ -32,16 +32,20 @@ export const WeekView = {
     const { weekDays, activities, todayDate, activeMobileDayIndex } = state;
     const resolvedMap = RecurrenceEngine.resolveWeekActivities(activities, weekDays);
 
-    // Mobile tabs HTML
+    // Mobile tabs HTML with activity counts
     const mobileTabsHtml = `
       <div class="mobile-day-tabs" id="mobile-day-tabs">
         ${weekDays.map((day, idx) => {
+          const dateKey = DateUtils.formatDateKey(day);
           const isToday = DateUtils.isSameDay(day, todayDate);
           const shortName = DateUtils.dayNamesShort[idx];
           const dayNumber = day.getDate();
+          const dayCount = (resolvedMap.get(dateKey) || []).length;
+
           return `
             <button type="button" class="mobile-day-tab ${idx === activeMobileDayIndex ? 'active' : ''}" data-day-index="${idx}">
-              ${shortName} ${dayNumber} ${isToday ? '•' : ''}
+              <span>${shortName} ${dayNumber} ${isToday ? '•' : ''}</span>
+              ${dayCount > 0 ? `<span class="tab-badge">${dayCount}</span>` : ''}
             </button>
           `;
         }).join('')}

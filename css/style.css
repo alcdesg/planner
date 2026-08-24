@@ -380,8 +380,8 @@ select:focus-visible {
 }
 
 .day-add-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 1.1rem;
@@ -476,18 +476,20 @@ select:focus-visible {
 }
 
 .activity-check-btn {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   border: 1.5px solid var(--border-default);
   background: transparent;
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 1px;
   padding: 0;
   color: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .activity-check-btn:hover {
@@ -518,7 +520,7 @@ select:focus-visible {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2xs);
-  padding-left: 26px;
+  padding-left: 28px;
 }
 
 /* Category Badge */
@@ -650,6 +652,41 @@ select:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
+   Recurrence Weekday Chips (Outlook Style)
+   -------------------------------------------------------------------------- */
+.recurrence-days-picker {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.day-chip {
+  flex: 1;
+  min-width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface-secondary);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.day-chip:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+.day-chip.selected {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+/* --------------------------------------------------------------------------
    Modal Components (Activity & User)
    -------------------------------------------------------------------------- */
 .modal-backdrop {
@@ -681,7 +718,7 @@ select:focus-visible {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   overflow: hidden;
   transform: scale(0.96) translateY(8px);
   transition: transform var(--transition-normal);
@@ -724,6 +761,8 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .form-group {
@@ -797,13 +836,13 @@ select:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Mobile Adaptations
+   Mobile Adaptations & Responsiveness
    -------------------------------------------------------------------------- */
 .mobile-day-tabs {
   display: none;
   overflow-x: auto;
   gap: var(--space-xs);
-  padding: var(--space-xs) 0;
+  padding: var(--space-2xs) 0 var(--space-xs) 0;
   margin-bottom: var(--space-sm);
   scrollbar-width: none;
 }
@@ -818,15 +857,32 @@ select:focus-visible {
   border-radius: var(--radius-md);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: 44px;
 }
 
 .mobile-day-tab.active {
   background-color: var(--color-primary);
   color: #ffffff;
   border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-badge {
+  font-size: 0.72rem;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.mobile-day-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
 @media (max-width: 1024px) {
@@ -855,7 +911,8 @@ select:focus-visible {
 
   .current-range-display {
     min-width: unset;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    padding: 0 var(--space-xs);
   }
 
   .main-content {
@@ -873,10 +930,18 @@ select:focus-visible {
 
   .day-column {
     display: none;
-    min-height: 400px;
+    min-height: 480px;
   }
 
   .day-column.mobile-active {
     display: flex;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-dialog {
+    max-height: 90vh;
   }
 }

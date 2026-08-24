@@ -111,6 +111,13 @@ class AppStore {
     this.switchUser(newUser.id);
   }
 
+  clearAllActivities(userId = null) {
+    const targetUserId = userId || this.activeUserId;
+    this.activities = [];
+    StorageService.saveActivities(targetUserId, []);
+    this.notify();
+  }
+
   /* ------------------------------------------------------------------------
      Theme Actions
      ------------------------------------------------------------------------ */
@@ -173,6 +180,8 @@ class AppStore {
       category: data.category || 'outros',
       status: ACTIVITY_STATUS.PENDING,
       recurrence: data.recurrence || RECURRENCE_TYPES.NONE,
+      recurrenceDays: data.recurrenceDays || [],
+      recurrenceEndDate: data.recurrenceEndDate || '',
       completedDates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

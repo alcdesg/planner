@@ -14,24 +14,40 @@ export const CATEGORIES = {
 
 export const RECURRENCE_TYPES = {
   NONE: 'none',
+  CUSTOM_DAYS: 'custom_days', // Specific days of the week (e.g. Ter, Qua, Qui)
   DAILY: 'daily',
-  WEEKLY: 'weekly',
   WEEKDAYS: 'weekdays', // Seg a Sex
+  WEEKLY: 'weekly',
   MONTHLY: 'monthly'
 };
 
 export const RECURRENCE_LABELS = {
   none: 'Não repete',
+  custom_days: 'Dias específicos da semana (Outlook)',
+  weekdays: 'Segunda a Sexta (dias úteis)',
   daily: 'Todos os dias',
-  weekly: 'Semanalmente',
-  weekdays: 'Segunda a Sexta',
-  monthly: 'Mensalmente'
+  weekly: 'Semanalmente (mesmo dia da semana)',
+  monthly: 'Mensalmente (mesmo dia do mês)'
 };
 
 export const ACTIVITY_STATUS = {
   PENDING: 'pending',
   COMPLETED: 'completed'
 };
+
+/**
+ * Days of week definition with JS getDay() indices:
+ * 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb, 0 = Dom
+ */
+export const WEEKDAY_OPTIONS = [
+  { dayIndex: 1, shortLabel: 'SEG', fullLabel: 'Segunda-feira' },
+  { dayIndex: 2, shortLabel: 'TER', fullLabel: 'Terça-feira' },
+  { dayIndex: 3, shortLabel: 'QUA', fullLabel: 'Quarta-feira' },
+  { dayIndex: 4, shortLabel: 'QUI', fullLabel: 'Quinta-feira' },
+  { dayIndex: 5, shortLabel: 'SEX', fullLabel: 'Sexta-feira' },
+  { dayIndex: 6, shortLabel: 'SÁB', fullLabel: 'Sábado' },
+  { dayIndex: 0, shortLabel: 'DOM', fullLabel: 'Domingo' }
+];
 
 /**
  * Generate a unique ID

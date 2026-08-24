@@ -1,6 +1,7 @@
 /**
  * @file recurrence.js
  * Expands recurring activities deterministically for the visible week/day range.
+ * Supports custom days of the week (Outlook style) and optional end date limits.
  */
 
 import { RECURRENCE_TYPES, DateUtils } from './models.js';
@@ -25,7 +26,20 @@ export const RecurrenceEngine = {
     // If target date is before initial start date, it doesn't occur
     if (target < startDate) return false;
 
+    // Check optional end date ("Repetir até")
+    if (activity.recurrenceEndDate) {
+      const endDate = DateUtils.parseDateKey(activity.recurrenceEndDate);
+      endDate.setHours(23, 59, 59, 999);
+      if (target > endDate) return false;
+    }
+
     switch (activity.recurrence) {
+      case RECURRENCE_TYPES.CUSTOM_DAYS: {
+        const targetDayIndex = target.getDay(); // 0 is Sun, 1 is Mon...
+        const days = Array.isArray(activity.recurrenceDays) ? activity.recurrenceDays : [];
+        return days.includes(targetDayIndex);
+      }
+
       case RECURRENCE_TYPES.DAILY:
         return true;
 
@@ -81,7 +95,7 @@ export const RecurrenceEngine = {
     });
 
     // Sort activities inside each day: untimed first, then timed chronologically
-    dayMap.forEach((list, key) => {
+    dayMap.forEach((list) => {
       list.sort((a, b) => {
         if (!a.time && !b.time) return 0;
         if (!a.time) return -1;

@@ -1,6 +1,6 @@
 /**
  * @file userModal.js
- * User profile management modal (Create user, switch profile, backup data).
+ * User profile management modal (Create user, switch profile, clear activities, backup data).
  */
 
 import { store } from '../state/store.js';
@@ -53,13 +53,13 @@ export const UserModal = {
     this.container.innerHTML = `
       <div class="modal-dialog" role="dialog" aria-modal="true">
         <div class="modal-header">
-          <h2 class="modal-title">Gerenciar Usuários & Dados</h2>
+          <h2 class="modal-title">Configurações & Dados</h2>
           <button type="button" class="modal-close-btn" id="user-modal-close">&times;</button>
         </div>
 
         <div class="modal-body">
           <form id="create-user-form" style="display: flex; flex-direction: column; gap: var(--space-xs);">
-            <label class="form-label" for="new-user-name-input">Adicionar Novo Usuário Local</label>
+            <label class="form-label" for="new-user-name-input">Adicionar Novo Perfil Local</label>
             <div style="display: flex; gap: var(--space-xs);">
               <input
                 type="text"
@@ -74,13 +74,13 @@ export const UserModal = {
           </form>
 
           <div style="margin-top: var(--space-sm);">
-            <label class="form-label" style="margin-bottom: var(--space-xs); display: block;">Perfis Existentes</label>
-            <div style="display: flex; flex-direction: column; gap: var(--space-xs); max-height: 160px; overflow-y: auto;">
+            <label class="form-label" style="margin-bottom: var(--space-xs); display: block;">Perfis Disponíveis</label>
+            <div style="display: flex; flex-direction: column; gap: var(--space-xs); max-height: 150px; overflow-y: auto;">
               ${state.users.map(u => `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-xs) var(--space-sm); background-color: var(--bg-surface-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border-default);">
                   <div style="display: flex; align-items: center; gap: var(--space-xs);">
                     <div class="user-avatar-badge">${u.avatarInitial}</div>
-                    <span style="font-weight: ${u.id === state.activeUserId ? '700' : '500'}; color: var(--text-primary);">
+                    <span style="font-weight: ${u.id === state.activeUserId ? '700' : '500'}; color: var(--text-primary); font-size: 0.9rem;">
                       ${u.name} ${u.id === state.activeUserId ? '<span style="font-size: 0.75rem; color: var(--color-primary); margin-left: 4px;">(Ativo)</span>' : ''}
                     </span>
                   </div>
@@ -94,14 +94,23 @@ export const UserModal = {
             </div>
           </div>
 
-          <div style="border-top: 1px solid var(--border-default); padding-top: var(--space-md); margin-top: var(--space-xs);">
-            <label class="form-label" style="margin-bottom: var(--space-xs); display: block;">Backup & Segurança</label>
+          <!-- Quick Data Reset -->
+          <div style="border-top: 1px solid var(--border-default); padding-top: var(--space-sm); margin-top: var(--space-xs);">
+            <label class="form-label" style="margin-bottom: var(--space-xs); display: block;">Limpeza de Atividades</label>
+            <button type="button" class="btn-danger" id="btn-clear-user-activities" style="width: 100%; justify-content: center; border: 1px dashed rgba(239, 68, 68, 0.4);">
+              🗑️ Limpar todas as atividades de "${state.activeUser ? state.activeUser.name : 'Perfil'}"
+            </button>
+          </div>
+
+          <!-- Backup & Transfer -->
+          <div style="border-top: 1px solid var(--border-default); padding-top: var(--space-sm); margin-top: var(--space-xs);">
+            <label class="form-label" style="margin-bottom: var(--space-xs); display: block;">Backup & Transferência</label>
             <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
-              <button type="button" class="btn-secondary" id="btn-export-backup" style="font-size: 0.8rem;">
-                📥 Exportar Backup JSON
+              <button type="button" class="btn-secondary" id="btn-export-backup" style="font-size: 0.8rem; flex: 1;">
+                📥 Exportar JSON
               </button>
-              <label class="btn-secondary" style="font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                📤 Restaurar Backup
+              <label class="btn-secondary" style="font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 1;">
+                📤 Restaurar JSON
                 <input type="file" id="input-import-backup" accept=".json" style="display: none;" />
               </label>
             </div>
@@ -127,6 +136,19 @@ export const UserModal = {
         this.close();
       });
     });
+
+    // Clear activities button
+    const clearBtn = this.container.querySelector('#btn-clear-user-activities');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        const userName = state.activeUser ? state.activeUser.name : 'este perfil';
+        if (confirm(`Deseja realmente apagar todas as atividades de ${userName}? Essa ação deixará o quadro em branco.`)) {
+          store.clearAllActivities();
+          alert('Todas as atividades foram removidas.');
+          this.close();
+        }
+      });
+    }
 
     // Create user form
     const createForm = this.container.querySelector('#create-user-form');
