@@ -1,0 +1,205 @@
+/* ==========================================================================
+   DESIGN TOKENS & THEMING (Light / Dark / System)
+   Organizador Semanal - v1.1
+   ========================================================================== */
+
+:root {
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Spacing Scale */
+  --space-2xs: 0.25rem;  /* 4px */
+  --space-xs:  0.5rem;   /* 8px */
+  --space-sm:  0.75rem;  /* 12px */
+  --space-md:  1rem;     /* 16px */
+  --space-lg:  1.5rem;   /* 24px */
+  --space-xl:  2rem;     /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+
+  /* Border Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Primary Accent: Calming Teal/Cyan Slate (Avoiding purple AI look) */
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-primary-light: rgba(2, 132, 199, 0.12);
+
+  /* Categories (Soft, friendly, highly legible in Light & Dark) */
+  --cat-trabalho-color: #0369a1;
+  --cat-trabalho-bg: #e0f2fe;
+  --cat-trabalho-border: #bae6fd;
+
+  --cat-casa-color: #15803d;
+  --cat-casa-bg: #dcfce7;
+  --cat-casa-border: #bbf7d0;
+
+  --cat-pessoal-color: #b45309;
+  --cat-pessoal-bg: #fef3c7;
+  --cat-pessoal-border: #fde68a;
+
+  --cat-saude-color: #be123c;
+  --cat-saude-bg: #ffe4e6;
+  --cat-saude-border: #fecdd3;
+
+  --cat-compromisso-color: #c2410c;
+  --cat-compromisso-bg: #ffedd5;
+  --cat-compromisso-border: #fed7aa;
+
+  --cat-outros-color: #475569;
+  --cat-outros-bg: #f1f5f9;
+  --cat-outros-border: #e2e8f0;
+}
+
+/* --------------------------------------------------------------------------
+   LIGHT MODE (Default)
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f1f5f9;
+  --bg-surface-secondary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-card-completed: #f8fafc;
+  --bg-day-today: #f0fdf4;
+  --border-day-today: #86efac;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-completed: #94a3b8;
+
+  --border-subtle: #f1f5f9;
+  --border-default: #e2e8f0;
+  --border-focus: #0284c7;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+
+  --modal-backdrop: rgba(15, 23, 42, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   DARK MODE
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --bg-app: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-surface-hover: #26354a;
+  --bg-surface-secondary: #162032;
+  --bg-card: #1e293b;
+  --bg-card-hover: #273549;
+  --bg-card-completed: #162032;
+  --bg-day-today: rgba(34, 197, 94, 0.08);
+  --border-day-today: #22c55e;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --text-completed: #64748b;
+
+  --border-subtle: #1e293b;
+  --border-default: #334155;
+  --border-focus: #38bdf8;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  --modal-backdrop: rgba(0, 0, 0, 0.7);
+
+  /* Dark mode category colors (subtle dark pastel pill style) */
+  --cat-trabalho-color: #7dd3fc;
+  --cat-trabalho-bg: rgba(2, 132, 199, 0.22);
+  --cat-trabalho-border: rgba(56, 189, 248, 0.3);
+
+  --cat-casa-color: #86efac;
+  --cat-casa-bg: rgba(34, 197, 94, 0.2);
+  --cat-casa-border: rgba(74, 222, 128, 0.3);
+
+  --cat-pessoal-color: #fde047;
+  --cat-pessoal-bg: rgba(234, 179, 8, 0.2);
+  --cat-pessoal-border: rgba(250, 204, 21, 0.3);
+
+  --cat-saude-color: #fda4af;
+  --cat-saude-bg: rgba(244, 63, 94, 0.22);
+  --cat-saude-border: rgba(251, 113, 133, 0.3);
+
+  --cat-compromisso-color: #fdba74;
+  --cat-compromisso-bg: rgba(249, 115, 22, 0.22);
+  --cat-compromisso-border: rgba(251, 146, 60, 0.3);
+
+  --cat-outros-color: #cbd5e1;
+  --cat-outros-bg: rgba(100, 116, 139, 0.25);
+  --cat-outros-border: rgba(148, 163, 184, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --bg-app: #0f172a;
+    --bg-surface: #1e293b;
+    --bg-surface-hover: #26354a;
+    --bg-surface-secondary: #162032;
+    --bg-card: #1e293b;
+    --bg-card-hover: #273549;
+    --bg-card-completed: #162032;
+    --bg-day-today: rgba(34, 197, 94, 0.08);
+    --border-day-today: #22c55e;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #64748b;
+    --text-completed: #64748b;
+
+    --border-subtle: #1e293b;
+    --border-default: #334155;
+    --border-focus: #38bdf8;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+    --modal-backdrop: rgba(0, 0, 0, 0.7);
+
+    --cat-trabalho-color: #7dd3fc;
+    --cat-trabalho-bg: rgba(2, 132, 199, 0.22);
+    --cat-trabalho-border: rgba(56, 189, 248, 0.3);
+
+    --cat-casa-color: #86efac;
+    --cat-casa-bg: rgba(34, 197, 94, 0.2);
+    --cat-casa-border: rgba(74, 222, 128, 0.3);
+
+    --cat-pessoal-color: #fde047;
+    --cat-pessoal-bg: rgba(234, 179, 8, 0.2);
+    --cat-pessoal-border: rgba(250, 204, 21, 0.3);
+
+    --cat-saude-color: #fda4af;
+    --cat-saude-bg: rgba(244, 63, 94, 0.22);
+    --cat-saude-border: rgba(251, 113, 133, 0.3);
+
+    --cat-compromisso-color: #fdba74;
+    --cat-compromisso-bg: rgba(249, 115, 22, 0.22);
+    --cat-compromisso-border: rgba(251, 146, 60, 0.3);
+
+    --cat-outros-color: #cbd5e1;
+    --cat-outros-bg: rgba(100, 116, 139, 0.25);
+    --cat-outros-border: rgba(148, 163, 184, 0.3);
+  }
+}
