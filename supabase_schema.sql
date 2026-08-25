@@ -1,10 +1,10 @@
 -- ==============================================================================
--- ORGANIZADOR SEMANAL - SUPABASE POSTGRESQL SCHEMA, RBAC & PROVISIONING SCRIPT
+-- ORGANIZADOR SEMANAL - SUPABASE POSTGRESQL SCHEMA, RBAC, GRANTS & PROVISIONING
 -- Cole este script no SQL Editor do seu painel do Supabase e clique em RUN.
 -- Projeto: https://txumkevqlgjdyqqlmxlh.supabase.co
 -- ==============================================================================
 
--- Habilitar extensão de criptografia para provisionamento de usuários
+-- Habilitar extensões
 create extension if not exists pgcrypto;
 
 -- 1. TABELA DE PERFIS DE USUÁRIOS COM RBAC (ADMIN / MEMBER)
@@ -19,12 +19,12 @@ create table if not exists public.user_profiles (
   updated_at timestamptz default now()
 );
 
--- Garantir que as colunas existam caso a tabela já tenha sido criada anteriormente
+-- Garantir colunas
 alter table public.user_profiles add column if not exists role text not null default 'member' check (role in ('admin', 'member'));
 alter table public.user_profiles add column if not exists is_active boolean default true;
 alter table public.user_profiles add column if not exists created_at timestamptz default now();
 
--- Ativar RLS em user_profiles
+-- Ativar RLS
 alter table public.user_profiles enable row level security;
 
 -- Função auxiliar segura para verificar se o usuário atual é Admin
@@ -36,7 +36,7 @@ begin
     where id = auth.uid() and role = 'admin' and is_active = true
   );
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 -- Políticas de RLS para user_profiles
 drop policy if exists "Usuários podem visualizar seus próprios perfis ou admins visualizam todos" on public.user_profiles;
@@ -55,7 +55,7 @@ create policy "Admins ou Auth Hook podem inserir perfis"
   with check (auth.uid() = id or public.is_admin() or auth.uid() is null);
 
 
--- Trigger para criar perfil automaticamente no cadastro caso ocorra via API
+-- Trigger de criação de perfil
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -73,7 +73,7 @@ begin
       role = coalesce(excluded.role, user_profiles.role);
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -86,8 +86,8 @@ create table if not exists public.activities (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
   title text not null,
-  date text not null, -- YYYY-MM-DD
-  time text,          -- HH:mm
+  date text not null,
+  time text,
   category text default 'outros',
   status text default 'pending',
   recurrence text default 'none',
@@ -137,7 +137,7 @@ create index if not exists idx_habits_user on public.habits (user_id);
 create table if not exists public.meal_plans (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
-  date_key text not null, -- YYYY-MM-DD
+  date_key text not null,
   breakfast jsonb default '{"text": "", "completed": false}'::jsonb,
   lunch jsonb default '{"text": "", "completed": false}'::jsonb,
   snack jsonb default '{"text": "", "completed": false}'::jsonb,
@@ -157,7 +157,20 @@ create index if not exists idx_meal_plans_user_date on public.meal_plans (user_i
 
 
 -- ==============================================================================
--- 5. PROVISIONAMENTO AUTOMÁTICO E ROBUSTO DOS USUÁRIOS INICIAIS
+-- 5. GRANTS DE PERMISSÕES PARA O SUPABASE (EVITA 'DATABASE ERROR QUERYING SCHEMA')
+-- ==============================================================================
+grant usage on schema public to anon, authenticated, service_role;
+grant all on all tables in schema public to anon, authenticated, service_role;
+grant all on all routines in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on routines to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+
+
+-- ==============================================================================
+-- 6. PROVISIONAMENTO AUTOMÁTICO E ROBUSTO DOS USUÁRIOS INICIAIS
 -- ==============================================================================
 
 do $$
@@ -201,7 +214,6 @@ begin
     where id = alcides_id;
   end if;
 
-  -- Criar identidade para Alcides (com id no tipo uuid e provider_id no tipo text)
   if not exists (select 1 from auth.identities where user_id = alcides_id) then
     insert into auth.identities (
       id,
@@ -224,7 +236,6 @@ begin
     );
   end if;
 
-  -- Garantir perfil no public.user_profiles
   insert into public.user_profiles (id, email, name, role, theme)
   values (alcides_id, 'alcides@planner.com.br', 'Alcides', 'admin', 'system')
   on conflict (id) do update set role = 'admin', email = 'alcides@planner.com.br';
@@ -266,7 +277,6 @@ begin
     where id = paula_id;
   end if;
 
-  -- Criar identidade para Paula (com id no tipo uuid e provider_id no tipo text)
   if not exists (select 1 from auth.identities where user_id = paula_id) then
     insert into auth.identities (
       id,
@@ -289,9 +299,11 @@ begin
     );
   end if;
 
-  -- Garantir perfil no public.user_profiles
   insert into public.user_profiles (id, email, name, role, theme)
   values (paula_id, 'paula@planner.com.br', 'Paula', 'member', 'system')
   on conflict (id) do update set role = 'member', email = 'paula@planner.com.br';
 
 end $$;
+
+-- Recarregar cache de schema do PostgREST
+notify pgrst, 'reload schema';
