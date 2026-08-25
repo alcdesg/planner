@@ -18,12 +18,10 @@ export const SupabaseService = {
 
     const startTime = performance.now();
     try {
-      // Lightweight probe to verify database accessibility
       const { error } = await client.from('user_profiles').select('id', { count: 'exact', head: true });
       const latency = Math.round(performance.now() - startTime);
 
       if (error && error.code !== 'PGRST116') {
-        // Even if table is empty or requires auth, reaching postgrest confirms connectivity
         if (error.message && error.message.includes('FetchError')) {
           return { ok: false, message: `Falha na conexão: ${error.message}` };
         }
@@ -80,9 +78,35 @@ export const SupabaseService = {
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+
       if (error) throw error;
-      return data;
+
+      if (data) return data;
+
+      // Auto-provision profile on first login if not created yet
+      const currentUser = await this.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        const isAdminUser = currentUser.email?.toLowerCase().startsWith('alcides');
+        const newProfile = {
+          id: userId,
+          email: currentUser.email,
+          name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário',
+          role: isAdminUser ? 'admin' : (currentUser.user_metadata?.role || 'member'),
+          theme: 'system'
+        };
+
+        const { data: inserted, error: insertErr } = await client
+          .from('user_profiles')
+          .upsert(newProfile)
+          .select()
+          .single();
+
+        if (!insertErr && inserted) return inserted;
+        return newProfile;
+      }
+
+      return null;
     } catch (e) {
       console.warn('Failed to fetch user profile:', e);
       return null;
@@ -99,6 +123,12 @@ export const SupabaseService = {
     });
 
     if (error) throw error;
+
+    // Ensure user profile exists
+    if (data.user) {
+      await this.fetchUserProfile(data.user.id);
+    }
+
     return data;
   },
 

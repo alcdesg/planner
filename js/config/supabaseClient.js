@@ -6,8 +6,8 @@
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-const DEFAULT_PROJECT_URL = 'https://txumkevqlgjdyqqlmxlh.supabase.co';
-const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4dW1rZXZxbGdqZHlxcWxteGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2MTQ3NDMsImV4cCI6MjEwMzE5MDc0M30.-ZMobb3ZH6tDG429UCmZ9CJt283a82msXMcmIL9Hb50';
+export const DEFAULT_PROJECT_URL = 'https://txumkevqlgjdyqqlmxlh.supabase.co';
+export const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4dW1rZXZxbGdqZHlxcWxteGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2MTQ3NDMsImV4cCI6MjEwMzE5MDc0M30.-ZMobb3ZH6tDG429UCmZ9CJt283a82msXMcmIL9Hb50';
 
 const CONFIG_KEY_URL = 'organizador:supabase:url';
 const CONFIG_KEY_ANON = 'organizador:supabase:anon_key';
@@ -19,11 +19,15 @@ class SupabaseConfig {
   }
 
   getUrl() {
-    return localStorage.getItem(CONFIG_KEY_URL) || DEFAULT_PROJECT_URL;
+    const saved = localStorage.getItem(CONFIG_KEY_URL);
+    if (saved && saved.startsWith('http')) return saved.trim();
+    return DEFAULT_PROJECT_URL;
   }
 
   getAnonKey() {
-    return localStorage.getItem(CONFIG_KEY_ANON) || DEFAULT_ANON_KEY;
+    const saved = localStorage.getItem(CONFIG_KEY_ANON);
+    if (saved && saved.length > 20) return saved.trim();
+    return DEFAULT_ANON_KEY;
   }
 
   isConfigured() {
@@ -67,10 +71,10 @@ class SupabaseConfig {
     return false;
   }
 
-  clearCredentials() {
+  resetToDefaults() {
     localStorage.removeItem(CONFIG_KEY_URL);
     localStorage.removeItem(CONFIG_KEY_ANON);
-    this.client = null;
+    this.initClient();
   }
 }
 

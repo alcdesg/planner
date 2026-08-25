@@ -1,6 +1,6 @@
 /**
  * @file authModal.js
- * Clean, secure iOS Aqua Authentication Gate with Live Supabase Connection Health Status.
+ * Clean, secure iOS Aqua Authentication Gate with Live Supabase Connection Health Status and Diagnostics.
  */
 
 import { supabaseConfig } from '../config/supabaseClient.js';
@@ -269,6 +269,10 @@ export const AuthModal = {
             Salvar e Conectar
           </button>
         </div>
+
+        <button type="button" class="btn-secondary" id="btn-reset-defaults" style="margin-top: 4px; justify-content: center; font-size: 0.76rem; color: var(--text-muted);">
+          🔄 Restaurar Credenciais Oficiais do Projeto
+        </button>
       </form>
     `;
   },
@@ -287,6 +291,15 @@ export const AuthModal = {
     this.container.querySelector('#tab-config')?.addEventListener('click', () => {
       this.activeTab = 'config';
       this.render();
+    });
+
+    // Reset Defaults Button
+    this.container.querySelector('#btn-reset-defaults')?.addEventListener('click', async () => {
+      supabaseConfig.resetToDefaults();
+      await store.initAuth();
+      await this.checkConnection();
+      this.render();
+      alert('Credenciais oficiais restauradas com sucesso!');
     });
 
     // Test Connection Manual Button
@@ -308,7 +321,7 @@ export const AuthModal = {
       if (result.ok) {
         alert(`✔ Conexão com Supabase bem-sucedida! Latência: ${result.latency}ms`);
       } else {
-        alert(`❌ Falha na conexão: ${result.message}`);
+        alert(`❌ Falha na conexão: ${result.message}\n\nDica: Verifique se sua rede corporativa/VPN ou bloqueador de anúncios não está bloqueando conexões para supabase.co.`);
       }
     });
 
@@ -359,7 +372,13 @@ export const AuthModal = {
           }
         } catch (err) {
           console.error('Auth error:', err);
-          errorDiv.textContent = err.message || 'Erro ao autenticar. Verifique seu e-mail e senha.';
+          let friendlyMsg = err.message || 'Erro ao autenticar.';
+          if (err.message && err.message.includes('Failed to fetch')) {
+            friendlyMsg = 'Falha de rede (Failed to fetch). Verifique se a sua conexão com a internet ou proxy/VPN corporativo permite acesso ao Supabase.';
+          } else if (err.message && err.message.toLowerCase().includes('email not confirmed')) {
+            friendlyMsg = 'E-mail não confirmado. Desative a confirmação de e-mail no painel do Supabase (Auth > Providers > Email) ou execute o script de confirmação.';
+          }
+          errorDiv.textContent = friendlyMsg;
           errorDiv.style.display = 'block';
         } finally {
           submitBtn.disabled = false;
