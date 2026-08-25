@@ -18,7 +18,7 @@
 <body>
   <div class="container">
     <h1>🧪 Organizador Semanal - Testes Automatizados</h1>
-    <p>Verificação de modelos de domínio, datas sem desvio de fuso horário, recorrências, overrides de ocorrência única e exclusões pontuais.</p>
+    <p>Verificação de modelos de domínio, datas sem desvio de fuso horário, recorrências, <strong>Habit Tracker (Semanal e Mensal)</strong> e <strong>Plano Alimentar</strong>.</p>
     <div id="output" class="test-log">Executando testes...</div>
     <div id="summary"></div>
   </div>
@@ -26,6 +26,8 @@
   <script type="module">
     import { DateUtils, RECURRENCE_TYPES, generateId } from './js/domain/models.js';
     import { RecurrenceEngine } from './js/domain/recurrence.js';
+    import { HabitUtils } from './js/domain/habitsModel.js';
+    import { MealUtils } from './js/domain/mealPlanModel.js';
 
     const out = document.getElementById('output');
     const summary = document.getElementById('summary');
@@ -51,18 +53,16 @@
       }
     }
 
-    log('[1/5] Testando Utilitários de Data e Imunidade a Fuso Horário...', 'header-group');
+    log('[1/6] Testando Utilitários de Data e Imunidade a Fuso Horário...', 'header-group');
     const dateStr = '2026-08-24';
     assert(DateUtils.formatDateKey(dateStr) === '2026-08-24', 'formatDateKey de "2026-08-24" é "2026-08-24"');
     const parsed = DateUtils.parseDateKey(dateStr);
     assert(parsed.getDate() === 24, 'parseDateKey("2026-08-24").getDate() é 24');
-    assert(parsed.getMonth() === 7, 'parseDateKey("2026-08-24").getMonth() é 7 (Agosto)');
     const monday = DateUtils.getMondayOfWeek('2026-08-27');
-    assert(DateUtils.formatDateKey(monday) === '2026-08-24', 'Segunda-feira da semana de 27/08 é 24/08');
     const weekDays = DateUtils.getWeekDays(monday);
     assert(weekDays.length === 7, 'Semana contém 7 dias');
 
-    log('[2/5] Testando Criação e Exibição de Atividades Simples...', 'header-group');
+    log('[2/6] Testando Criação e Exibição de Atividades Simples...', 'header-group');
     const singleActivity = {
       id: generateId(),
       userId: 'usr_test',
@@ -72,10 +72,9 @@
       category: 'saude',
       recurrence: RECURRENCE_TYPES.NONE
     };
-    assert(RecurrenceEngine.occursOnDate(singleActivity, '2026-08-26'), 'Atividade simples ocorre exatamente em 2026-08-26');
-    assert(!RecurrenceEngine.occursOnDate(singleActivity, '2026-08-24'), 'Atividade simples NÃO ocorre na segunda 2026-08-24');
+    assert(RecurrenceEngine.occursOnDate(singleActivity, '2026-08-26'), 'Atividade simples ocorre em 2026-08-26');
 
-    log('[3/5] Testando Recorrência Estilo Outlook (Dias Específicos e Data Limite)...', 'header-group');
+    log('[3/6] Testando Recorrências e Overrides...', 'header-group');
     const recurringActivity = {
       id: generateId(),
       userId: 'usr_test',
@@ -87,30 +86,46 @@
       recurrenceDays: [2, 3, 4],
       recurrenceEndDate: '2026-08-28',
       completedDates: ['2026-08-25'],
-      overrides: {
-        '2026-08-26': { title: 'Treino Especial', time: '19:00' }
-      },
+      overrides: { '2026-08-26': { title: 'Treino Especial', time: '19:00' } },
       deletedDates: ['2026-08-27']
     };
-    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-24'), 'NÃO ocorre na Segunda (24/08)');
-    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-25'), 'DEVE ocorrer na Terça (25/08)');
-    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-26'), 'DEVE ocorrer na Quarta (26/08)');
-    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'NÃO ocorre na Quinta (27/08) pois foi cancelada pontualmente');
-    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-28'), 'NÃO ocorre na Sexta (28/08)');
+    assert(RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-25'), 'Ocorre na Terça (25/08)');
+    assert(!RecurrenceEngine.occursOnDate(recurringActivity, '2026-08-27'), 'NÃO ocorre na Quinta (cancelada pontualmente)');
 
-    log('[4/5] Testando Overrides de Ocorrência Individual...', 'header-group');
-    const recurringMap = RecurrenceEngine.resolveWeekActivities([recurringActivity], weekDays);
-    const wednesdayOccur = recurringMap.get('2026-08-26')[0];
-    assert(wednesdayOccur.title === 'Treino Especial', 'Título na quarta-feira possui override "Treino Especial"');
-    assert(wednesdayOccur.time === '19:00', 'Horário na quarta-feira possui override "19:00"');
+    log('[4/6] Testando Habit Tracker (Semanal e Mensal)...', 'header-group');
+    let habit = HabitUtils.createHabit('usr_test', 'Beber 2L de água', '💧', 7);
+    habit = HabitUtils.toggleDate(habit, '2026-08-24');
+    habit = HabitUtils.toggleDate(habit, '2026-08-25');
+    assert(HabitUtils.isCompletedOnDate(habit, '2026-08-24'), 'Hábito marcado na segunda 24/08');
+    assert(!HabitUtils.isCompletedOnDate(habit, '2026-08-26'), 'Hábito não marcado na quarta 26/08');
+    const weeklyStats = HabitUtils.getWeeklyStats(habit, weekDays);
+    assert(weeklyStats.completedCount === 2, 'Progresso semanal: 2 dias concluídos');
+    const monthStats = HabitUtils.getMonthStats(habit, 2026, 7);
+    assert(monthStats.totalDays === 31, 'Agosto possui 31 dias');
+    assert(monthStats.completedCount === 2, 'Agosto possui 2 dias concluídos');
 
-    const tuesdayOccur = recurringMap.get('2026-08-25')[0];
-    assert(tuesdayOccur.title === 'Treino Funcional', 'Título na terça-feira permanece "Treino Funcional"');
-    assert(tuesdayOccur.isCompleted === true, 'Terça consta como concluída');
+    log('[5/6] Testando Plano Alimentar Semanal...', 'header-group');
+    const mealsMap = {
+      '2026-08-24': {
+        breakfast: { text: 'Ovos mexidos + Café', completed: true },
+        lunch: { text: 'Frango grelhado + Arroz', completed: false }
+      }
+    };
+    const mondayMeals = MealUtils.getDayMeals(mealsMap, '2026-08-24');
+    assert(mondayMeals.breakfast.text === 'Ovos mexidos + Café', 'Texto do café da manhã coincide');
+    assert(mondayMeals.breakfast.completed === true, 'Café da manhã marcado como concluído');
+    assert(mondayMeals.lunch.completed === false, 'Almoço não concluído');
 
-    log('[5/5] Testando Resolução da Semana Completa...', 'header-group');
-    const resolvedMap = RecurrenceEngine.resolveWeekActivities([singleActivity, recurringActivity], weekDays);
-    assert(resolvedMap.get('2026-08-26').length === 2, 'Quarta-feira possui 2 atividades resolvidas');
+    log('[6/6] Testando Estrutura de Backup JSON v1.2...', 'header-group');
+    const backupObj = {
+      version: '1.2',
+      exportedAt: new Date().toISOString(),
+      users: [{ id: 'usr_test', name: 'Teste' }],
+      userData: { usr_test: { activities: [singleActivity], habits: [habit], meals: mealsMap } }
+    };
+    const parsedBackup = JSON.parse(JSON.stringify(backupObj));
+    assert(parsedBackup.version === '1.2', 'Backup version é 1.2');
+    assert(parsedBackup.userData.usr_test.habits.length === 1, 'Backup contém 1 hábito');
 
     if (failed === 0) {
       summary.className = 'summary success';

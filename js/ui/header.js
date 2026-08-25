@@ -1,6 +1,6 @@
 /**
  * @file header.js
- * App header controller (navigation, user switcher, theme, view switcher).
+ * App header controller (navigation, user switcher, theme, modular view switcher).
  */
 
 import { DateUtils } from '../domain/models.js';
@@ -59,9 +59,20 @@ export const HeaderView = {
       </div>
 
       <div class="header-right">
+        <!-- Modular View Switcher -->
         <div class="view-switcher">
-          <button type="button" class="view-btn ${viewMode === 'week' ? 'active' : ''}" data-view="week">Semana</button>
-          <button type="button" class="view-btn ${viewMode === 'today' ? 'active' : ''}" data-view="today">Hoje</button>
+          <button type="button" class="view-btn ${viewMode === 'week' ? 'active' : ''}" data-view="week" title="Quadro Semanal">
+            <span>📅</span>
+            <span>Quadro</span>
+          </button>
+          <button type="button" class="view-btn ${viewMode === 'habits' ? 'active' : ''}" data-view="habits" title="Rastreador de Hábitos">
+            <span>🎯</span>
+            <span>Hábitos</span>
+          </button>
+          <button type="button" class="view-btn ${viewMode === 'meals' ? 'active' : ''}" data-view="meals" title="Plano Alimentar Semanal">
+            <span>🥗</span>
+            <span>Alimentação</span>
+          </button>
         </div>
 
         <!-- User Profile Dropdown -->
@@ -88,7 +99,7 @@ export const HeaderView = {
 
             <div class="user-menu-divider"></div>
             <button type="button" class="user-menu-item" id="btn-open-user-manager">
-              <span>⚙️ Gerenciar / Novo Usuário</span>
+              <span>⚙️ Configurações & Backup</span>
             </button>
           </div>
         </div>
@@ -143,7 +154,7 @@ export const HeaderView = {
       UserModal.open();
     });
 
-    // Theme Toggle (Cycles through: light -> dark -> system -> light)
+    // Theme Toggle
     const themeBtn = this.container.querySelector('#btn-theme-toggle');
     themeBtn.addEventListener('click', () => {
       const nextTheme = state.theme === 'light' ? 'dark' : state.theme === 'dark' ? 'system' : 'light';
