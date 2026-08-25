@@ -92,7 +92,7 @@ export const SupabaseService = {
           id: userId,
           email: currentUser.email,
           name: Sanitizer.clampText(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário', 150),
-          role: 'member', // Strictly member; elevation requires admin authorization in database
+          role: 'member',
           theme: 'system'
         };
 
@@ -128,6 +128,18 @@ export const SupabaseService = {
       await this.fetchUserProfile(data.user.id);
     }
 
+    return data;
+  },
+
+  async resetPassword(email) {
+    const client = supabaseConfig.getClient();
+    if (!client) throw new Error('Supabase não está configurado.');
+
+    const { data, error } = await client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+
+    if (error) throw error;
     return data;
   },
 
