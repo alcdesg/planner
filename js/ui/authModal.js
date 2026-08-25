@@ -2,8 +2,8 @@
  * @file authModal.js
  * Production-grade iOS Aqua Authentication Portal (UI/UX).
  * Split 2-pane layout in Desktop (Product Identity & Abstract Planner Preview + Auth Card).
- * Focused dedicated layout in Mobile.
- * Zero infrastructure exposure; strict separation between config and user authentication.
+ * Direct automatic gate on startup for unauthenticated users.
+ * Supports "Manter conectado (Entrar automaticamente)" and Password Recovery.
  */
 
 import { SupabaseService } from '../storage/supabaseService.js';
@@ -20,6 +20,7 @@ export const AuthModal = {
     if (!this.container) return;
 
     this.container.addEventListener('click', (e) => {
+      // Allow closing ONLY if user is already authenticated
       if (e.target === this.container && store.isAuthenticated()) {
         this.close();
       }
@@ -31,11 +32,25 @@ export const AuthModal = {
       }
     });
 
+    // React to auth state changes:
+    // If not authenticated, open login gate immediately.
+    // If authenticated (auto-login), close gate immediately.
     store.subscribe((state) => {
-      if (!state.isAuthenticated && !this.isOpen()) {
-        this.open('login');
+      if (!state.isAuthenticated) {
+        if (!this.isOpen()) {
+          this.open('login');
+        }
+      } else {
+        if (this.isOpen() && this.activeTab !== 'profile') {
+          this.close();
+        }
       }
     });
+
+    // Check on startup: if not authenticated, display login gate immediately
+    if (!store.isAuthenticated()) {
+      this.open('login');
+    }
   },
 
   isOpen() {
@@ -67,7 +82,7 @@ export const AuthModal = {
     const userProfile = state.userProfile;
     const isAdmin = state.isAdmin;
 
-    if (currentUser) {
+    if (currentUser && this.activeTab === 'profile') {
       this.renderAuthenticatedProfile(currentUser, userProfile, isAdmin);
       return;
     }
@@ -300,6 +315,15 @@ export const AuthModal = {
                   </button>
                 </div>
               </div>
+
+              ${!isSignUp ? `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: -4px;">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="auth-remember-me" checked style="accent-color: var(--color-primary); width: 16px; height: 16px; border-radius: 4px; cursor: pointer;" />
+                    <span>Lembrar de mim (Entrar automaticamente)</span>
+                  </label>
+                </div>
+              ` : ''}
             ` : ''}
 
             <button type="submit" class="btn-primary auth-submit-btn" id="auth-submit-btn">
