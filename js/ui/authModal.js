@@ -1,6 +1,7 @@
 /**
  * @file authModal.js
- * iOS Aqua Translucent Authentication Gate and Supabase Setup Modal.
+ * Clean, secure iOS Aqua Authentication Gate and Supabase Setup Modal.
+ * Zero hardcoded credentials or mock shortcuts.
  */
 
 import { supabaseConfig } from '../config/supabaseClient.js';
@@ -9,7 +10,7 @@ import { store } from '../state/store.js';
 
 export const AuthModal = {
   container: null,
-  activeTab: 'login', // 'login' | 'config'
+  activeTab: 'login', // 'login' | 'signup' | 'config'
 
   init() {
     this.container = document.getElementById('auth-modal-container');
@@ -28,7 +29,6 @@ export const AuthModal = {
       }
     });
 
-    // Check if we need to show the login gate on app startup
     store.subscribe((state) => {
       if (supabaseConfig.isConfigured() && !state.isAuthenticated && !this.isOpen()) {
         this.open('login');
@@ -93,8 +93,8 @@ export const AuthModal = {
                 <span style="color: #10b981; font-weight: 700;">🟢 Supabase PostgreSQL</span>
               </div>
               <div style="display: flex; justify-content: space-between;">
-                <span style="color: var(--text-muted);">Governança:</span>
-                <span style="color: var(--text-primary); font-weight: 600;">Row Level Security Ativo</span>
+                <span style="color: var(--text-muted);">Segurança:</span>
+                <span style="color: var(--text-primary); font-weight: 600;">Row Level Security (RLS) Ativo</span>
               </div>
             </div>
 
@@ -127,14 +127,15 @@ export const AuthModal = {
         <div style="padding: 12px 18px 0 18px;">
           <div class="view-switcher" style="width: 100%;">
             <button type="button" class="view-btn ${this.activeTab === 'login' ? 'active' : ''}" style="flex: 1;" id="tab-login">Entrar</button>
-            <button type="button" class="view-btn ${this.activeTab === 'config' ? 'active' : ''}" style="flex: 1;" id="tab-config">⚙️ Configuração</button>
+            <button type="button" class="view-btn ${this.activeTab === 'signup' ? 'active' : ''}" style="flex: 1;" id="tab-signup">Criar Conta</button>
+            <button type="button" class="view-btn ${this.activeTab === 'config' ? 'active' : ''}" style="flex: 1;" id="tab-config">⚙️ Conexão</button>
           </div>
         </div>
 
         <div class="modal-body">
           <div id="auth-error-msg" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 8px;"></div>
 
-          ${this.activeTab === 'config' ? this.renderConfigForm() : this.renderLoginForm(isConfigured)}
+          ${this.activeTab === 'config' ? this.renderConfigForm() : this.renderAuthForm(isConfigured)}
         </div>
       </div>
     `;
@@ -142,7 +143,7 @@ export const AuthModal = {
     this.attachEvents();
   },
 
-  renderLoginForm(isConfigured) {
+  renderAuthForm(isConfigured) {
     if (!isConfigured) {
       return `
         <div style="text-align: center; padding: 16px 8px;">
@@ -160,15 +161,31 @@ export const AuthModal = {
       `;
     }
 
+    const isSignUp = this.activeTab === 'signup';
+
     return `
       <form id="auth-credentials-form" style="display: flex; flex-direction: column; gap: 10px;">
+        ${isSignUp ? `
+          <div class="form-group">
+            <label class="form-label" for="auth-name-input">Nome Completo *</label>
+            <input
+              type="text"
+              id="auth-name-input"
+              class="form-input"
+              placeholder="Seu nome"
+              required
+              autocomplete="name"
+            />
+          </div>
+        ` : ''}
+
         <div class="form-group">
-          <label class="form-label" for="auth-email-input">E-mail *</label>
+          <label class="form-label" for="auth-email-input">E-mail corporativo ou pessoal *</label>
           <input
             type="email"
             id="auth-email-input"
             class="form-input"
-            placeholder="alcides@planner.com.br ou paula@planner.com.br"
+            placeholder="seuemail@planner.com.br"
             required
             autocomplete="email"
           />
@@ -182,25 +199,13 @@ export const AuthModal = {
             class="form-input"
             placeholder="••••••••"
             required
-            autocomplete="current-password"
+            minlength="6"
+            autocomplete="${isSignUp ? 'new-password' : 'current-password'}"
           />
         </div>
 
-        <!-- Quick Credentials Shortcuts for Convenience -->
-        <div style="margin-top: 4px;">
-          <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">ACESSO RÁPIDO:</div>
-          <div style="display: flex; gap: 6px;">
-            <button type="button" class="btn-secondary" id="btn-fill-alcides" style="flex: 1; font-size: 0.75rem; padding: 4px 8px;">
-              👑 Alcides (Admin)
-            </button>
-            <button type="button" class="btn-secondary" id="btn-fill-paula" style="flex: 1; font-size: 0.75rem; padding: 4px 8px;">
-              👤 Paula (Membro)
-            </button>
-          </div>
-        </div>
-
         <button type="submit" class="btn-primary" style="margin-top: 8px; padding: 10px; width: 100%; justify-content: center;">
-          Entrar no Organizador
+          ${isSignUp ? 'Criar Minha Conta' : 'Entrar no Sistema'}
         </button>
       </form>
     `;
@@ -247,6 +252,10 @@ export const AuthModal = {
       this.activeTab = 'login';
       this.render();
     });
+    this.container.querySelector('#tab-signup')?.addEventListener('click', () => {
+      this.activeTab = 'signup';
+      this.render();
+    });
     this.container.querySelector('#tab-config')?.addEventListener('click', () => {
       this.activeTab = 'config';
       this.render();
@@ -255,24 +264,6 @@ export const AuthModal = {
     this.container.querySelector('#btn-go-config')?.addEventListener('click', () => {
       this.activeTab = 'config';
       this.render();
-    });
-
-    // Quick fill buttons
-    const emailInput = this.container.querySelector('#auth-email-input');
-    const passwordInput = this.container.querySelector('#auth-password-input');
-
-    this.container.querySelector('#btn-fill-alcides')?.addEventListener('click', () => {
-      if (emailInput && passwordInput) {
-        emailInput.value = 'alcides@planner.com.br';
-        passwordInput.value = 'Epm@2024';
-      }
-    });
-
-    this.container.querySelector('#btn-fill-paula')?.addEventListener('click', () => {
-      if (emailInput && passwordInput) {
-        emailInput.value = 'paula@planner.com.br';
-        passwordInput.value = '232107';
-      }
     });
 
     // Supabase Config Submit
@@ -290,7 +281,7 @@ export const AuthModal = {
       });
     }
 
-    // Login Submit
+    // Login / Sign Up Submit
     const authForm = this.container.querySelector('#auth-credentials-form');
     if (authForm) {
       authForm.addEventListener('submit', async (e) => {
@@ -298,18 +289,27 @@ export const AuthModal = {
         const errorDiv = this.container.querySelector('#auth-error-msg');
         errorDiv.style.display = 'none';
 
-        const email = emailInput.value;
-        const password = passwordInput.value;
+        const email = this.container.querySelector('#auth-email-input').value;
+        const password = this.container.querySelector('#auth-password-input').value;
+        const nameInput = this.container.querySelector('#auth-name-input');
+        const name = nameInput ? nameInput.value : '';
 
         const submitBtn = authForm.querySelector('button[type="submit"]');
         const origText = submitBtn.innerHTML;
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '🔄 Autenticando...';
+        submitBtn.innerHTML = '🔄 Processando...';
 
         try {
-          await SupabaseService.signIn(email, password);
-          await store.syncNow();
-          this.close();
+          if (this.activeTab === 'signup') {
+            await SupabaseService.createManagedUser({ email, password, name, role: 'member' });
+            alert('Conta criada com sucesso! Você já pode entrar.');
+            this.activeTab = 'login';
+            this.render();
+          } else {
+            await SupabaseService.signIn(email, password);
+            await store.syncNow();
+            this.close();
+          }
         } catch (err) {
           console.error('Auth error:', err);
           errorDiv.textContent = err.message || 'Erro ao autenticar. Verifique seu e-mail e senha.';
