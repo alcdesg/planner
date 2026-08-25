@@ -1,205 +1,155 @@
 /* ==========================================================================
-   DESIGN TOKENS & THEMING (Light / Dark / System)
-   Organizador Semanal - v1.1
+   ORGANIZADOR SEMANAL - DESIGN SYSTEM TOKENS
+   iOS Aqua Translucent / Liquid Glassmorphism Aesthetic
    ========================================================================== */
 
 :root {
-  /* Fonts */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-  /* Spacing Scale */
-  --space-2xs: 0.25rem;  /* 4px */
-  --space-xs:  0.5rem;   /* 8px */
-  --space-sm:  0.75rem;  /* 12px */
-  --space-md:  1rem;     /* 16px */
-  --space-lg:  1.5rem;   /* 24px */
-  --space-xl:  2rem;     /* 32px */
-  --space-2xl: 3rem;     /* 48px */
+  /* Spacing Scale (8pt Grid) */
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs:  8px;
+  --space-sm:  12px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
 
-  /* Border Radii */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  /* Border Radii (iOS Smooth Corner Curves) */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
   --radius-full: 9999px;
 
-  /* Transitions */
-  --transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-normal: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Transitions (iOS Spring / Fluid) */
+  --transition-fast: 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
 
-  /* Primary Accent: Calming Teal/Cyan Slate (Avoiding purple AI look) */
-  --color-primary: #0284c7;
-  --color-primary-hover: #0369a1;
-  --color-primary-light: rgba(2, 132, 199, 0.12);
+  /* Primary Aqua / iOS Blue Palette */
+  --color-primary: #007aff;
+  --color-primary-hover: #0062cc;
+  --color-primary-light: rgba(0, 122, 255, 0.12);
+  --color-primary-glow: rgba(0, 122, 255, 0.35);
 
-  /* Categories (Soft, friendly, highly legible in Light & Dark) */
-  --cat-trabalho-color: #0369a1;
-  --cat-trabalho-bg: #e0f2fe;
-  --cat-trabalho-border: #bae6fd;
+  /* Aqua Glass / Specular Defaults (Light Theme) */
+  --bg-app: #f0f4f9;
+  --bg-app-ambient: radial-gradient(circle at 10% 20%, rgba(186, 230, 253, 0.55) 0%, rgba(240, 244, 249, 0.8) 50%, rgba(224, 231, 255, 0.4) 100%);
+  
+  --bg-glass-panel: rgba(255, 255, 255, 0.72);
+  --bg-glass-card: rgba(255, 255, 255, 0.85);
+  --bg-glass-pill: rgba(255, 255, 255, 0.65);
+  --bg-glass-hover: rgba(255, 255, 255, 0.95);
+  --bg-card-completed: rgba(241, 245, 249, 0.6);
 
-  --cat-casa-color: #15803d;
-  --cat-casa-bg: #dcfce7;
-  --cat-casa-border: #bbf7d0;
+  --border-glass: rgba(255, 255, 255, 0.65);
+  --border-glass-subtle: rgba(203, 213, 225, 0.5);
+  --border-focus: #007aff;
 
-  --cat-pessoal-color: #b45309;
-  --cat-pessoal-bg: #fef3c7;
-  --cat-pessoal-border: #fde68a;
-
-  --cat-saude-color: #be123c;
-  --cat-saude-bg: #ffe4e6;
-  --cat-saude-border: #fecdd3;
-
-  --cat-compromisso-color: #c2410c;
-  --cat-compromisso-bg: #ffedd5;
-  --cat-compromisso-border: #fed7aa;
-
-  --cat-outros-color: #475569;
-  --cat-outros-bg: #f1f5f9;
-  --cat-outros-border: #e2e8f0;
-}
-
-/* --------------------------------------------------------------------------
-   LIGHT MODE (Default)
-   -------------------------------------------------------------------------- */
-:root,
-[data-theme="light"] {
-  --bg-app: #f8fafc;
-  --bg-surface: #ffffff;
-  --bg-surface-hover: #f1f5f9;
-  --bg-surface-secondary: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f8fafc;
-  --bg-card-completed: #f8fafc;
-  --bg-day-today: #f0fdf4;
-  --border-day-today: #86efac;
-
+  /* Typography Colors */
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
   --text-completed: #94a3b8;
 
-  --border-subtle: #f1f5f9;
-  --border-default: #e2e8f0;
-  --border-focus: #0284c7;
+  /* Glass Shadows & Specular Glows */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.12);
+  --shadow-aqua: 0 8px 20px rgba(0, 122, 255, 0.28);
 
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  /* Modal Backdrop */
+  --modal-backdrop: rgba(15, 23, 42, 0.35);
 
-  --modal-backdrop: rgba(15, 23, 42, 0.4);
+  /* Categories Soft Pastel Tokens */
+  --cat-trabalho-bg: rgba(224, 231, 255, 0.75);
+  --cat-trabalho-color: #3730a3;
+  --cat-trabalho-border: rgba(199, 210, 254, 0.8);
+
+  --cat-casa-bg: rgba(254, 243, 199, 0.75);
+  --cat-casa-color: #92400e;
+  --cat-casa-border: rgba(253, 230, 138, 0.8);
+
+  --cat-pessoal-bg: rgba(243, 232, 255, 0.75);
+  --cat-pessoal-color: #6b21a8;
+  --cat-pessoal-border: rgba(233, 213, 255, 0.8);
+
+  --cat-saude-bg: rgba(220, 252, 231, 0.75);
+  --cat-saude-color: #166534;
+  --cat-saude-border: rgba(187, 247, 208, 0.8);
+
+  --cat-compromisso-bg: rgba(254, 226, 226, 0.75);
+  --cat-compromisso-color: #991b1b;
+  --cat-compromisso-border: rgba(254, 202, 202, 0.8);
+
+  --cat-outros-bg: rgba(241, 245, 249, 0.75);
+  --cat-outros-color: #475569;
+  --cat-outros-border: rgba(226, 232, 240, 0.8);
 }
 
 /* --------------------------------------------------------------------------
-   DARK MODE
+   DARK THEME (iOS Midnight Aqua Glass)
    -------------------------------------------------------------------------- */
 [data-theme="dark"] {
-  --bg-app: #0f172a;
-  --bg-surface: #1e293b;
-  --bg-surface-hover: #26354a;
-  --bg-surface-secondary: #162032;
-  --bg-card: #1e293b;
-  --bg-card-hover: #273549;
-  --bg-card-completed: #162032;
-  --bg-day-today: rgba(34, 197, 94, 0.08);
-  --border-day-today: #22c55e;
+  --color-primary: #0a84ff;
+  --color-primary-hover: #409cff;
+  --color-primary-light: rgba(10, 132, 255, 0.2);
+  --color-primary-glow: rgba(10, 132, 255, 0.45);
+
+  --bg-app: #090d16;
+  --bg-app-ambient: radial-gradient(circle at 10% 20%, rgba(14, 116, 144, 0.25) 0%, rgba(9, 13, 22, 0.9) 60%, rgba(30, 27, 75, 0.3) 100%);
+
+  --bg-glass-panel: rgba(18, 24, 38, 0.72);
+  --bg-glass-card: rgba(24, 32, 48, 0.78);
+  --bg-glass-pill: rgba(24, 32, 48, 0.65);
+  --bg-glass-hover: rgba(36, 48, 70, 0.85);
+  --bg-card-completed: rgba(15, 20, 30, 0.6);
+
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --border-glass-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: #0a84ff;
 
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #64748b;
   --text-completed: #64748b;
 
-  --border-subtle: #1e293b;
-  --border-default: #334155;
-  --border-focus: #38bdf8;
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.7);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --modal-backdrop: rgba(0, 0, 0, 0.65);
 
-  --modal-backdrop: rgba(0, 0, 0, 0.7);
+  --cat-trabalho-bg: rgba(49, 46, 129, 0.35);
+  --cat-trabalho-color: #a5b4fc;
+  --cat-trabalho-border: rgba(99, 102, 241, 0.3);
 
-  /* Dark mode category colors (subtle dark pastel pill style) */
-  --cat-trabalho-color: #7dd3fc;
-  --cat-trabalho-bg: rgba(2, 132, 199, 0.22);
-  --cat-trabalho-border: rgba(56, 189, 248, 0.3);
+  --cat-casa-bg: rgba(120, 53, 15, 0.35);
+  --cat-casa-color: #fde68a;
+  --cat-casa-border: rgba(245, 158, 11, 0.3);
 
-  --cat-casa-color: #86efac;
-  --cat-casa-bg: rgba(34, 197, 94, 0.2);
-  --cat-casa-border: rgba(74, 222, 128, 0.3);
+  --cat-pessoal-bg: rgba(88, 28, 135, 0.35);
+  --cat-pessoal-color: #d8b4fe;
+  --cat-pessoal-border: rgba(168, 85, 247, 0.3);
 
-  --cat-pessoal-color: #fde047;
-  --cat-pessoal-bg: rgba(234, 179, 8, 0.2);
-  --cat-pessoal-border: rgba(250, 204, 21, 0.3);
+  --cat-saude-bg: rgba(20, 83, 45, 0.35);
+  --cat-saude-color: #86efac;
+  --cat-saude-border: rgba(34, 197, 94, 0.3);
 
-  --cat-saude-color: #fda4af;
-  --cat-saude-bg: rgba(244, 63, 94, 0.22);
-  --cat-saude-border: rgba(251, 113, 133, 0.3);
+  --cat-compromisso-bg: rgba(127, 29, 29, 0.35);
+  --cat-compromisso-color: #fca5a5;
+  --cat-compromisso-border: rgba(239, 68, 68, 0.3);
 
-  --cat-compromisso-color: #fdba74;
-  --cat-compromisso-bg: rgba(249, 115, 22, 0.22);
-  --cat-compromisso-border: rgba(251, 146, 60, 0.3);
-
-  --cat-outros-color: #cbd5e1;
-  --cat-outros-bg: rgba(100, 116, 139, 0.25);
-  --cat-outros-border: rgba(148, 163, 184, 0.3);
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-theme="system"] {
-    --bg-app: #0f172a;
-    --bg-surface: #1e293b;
-    --bg-surface-hover: #26354a;
-    --bg-surface-secondary: #162032;
-    --bg-card: #1e293b;
-    --bg-card-hover: #273549;
-    --bg-card-completed: #162032;
-    --bg-day-today: rgba(34, 197, 94, 0.08);
-    --border-day-today: #22c55e;
-
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-    --text-completed: #64748b;
-
-    --border-subtle: #1e293b;
-    --border-default: #334155;
-    --border-focus: #38bdf8;
-
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
-
-    --modal-backdrop: rgba(0, 0, 0, 0.7);
-
-    --cat-trabalho-color: #7dd3fc;
-    --cat-trabalho-bg: rgba(2, 132, 199, 0.22);
-    --cat-trabalho-border: rgba(56, 189, 248, 0.3);
-
-    --cat-casa-color: #86efac;
-    --cat-casa-bg: rgba(34, 197, 94, 0.2);
-    --cat-casa-border: rgba(74, 222, 128, 0.3);
-
-    --cat-pessoal-color: #fde047;
-    --cat-pessoal-bg: rgba(234, 179, 8, 0.2);
-    --cat-pessoal-border: rgba(250, 204, 21, 0.3);
-
-    --cat-saude-color: #fda4af;
-    --cat-saude-bg: rgba(244, 63, 94, 0.22);
-    --cat-saude-border: rgba(251, 113, 133, 0.3);
-
-    --cat-compromisso-color: #fdba74;
-    --cat-compromisso-bg: rgba(249, 115, 22, 0.22);
-    --cat-compromisso-border: rgba(251, 146, 60, 0.3);
-
-    --cat-outros-color: #cbd5e1;
-    --cat-outros-bg: rgba(100, 116, 139, 0.25);
-    --cat-outros-border: rgba(148, 163, 184, 0.3);
-  }
+  --cat-outros-bg: rgba(30, 41, 59, 0.45);
+  --cat-outros-color: #94a3b8;
+  --cat-outros-border: rgba(71, 85, 105, 0.3);
 }

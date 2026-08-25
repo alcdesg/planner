@@ -1,7 +1,6 @@
 /* ==========================================================================
    ORGANIZADOR SEMANAL - MAIN STYLESHEET
-   Clean, Friendly, Lightweight Personal Weekly Board
-   Aligned with Product Specification v1.1, Habit Tracker & Meal Planner
+   iOS Aqua Translucent / Liquid Glassmorphism Design System
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -22,6 +21,9 @@ html {
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-app);
+  background-image: var(--bg-app-ambient);
+  background-attachment: fixed;
+  background-size: cover;
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
@@ -49,9 +51,34 @@ button {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Liquid Aqua Glass Utilities
+   -------------------------------------------------------------------------- */
+.aqua-glass {
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--border-glass);
+  box-shadow: var(--shadow-sm);
+}
+
+.aqua-pill {
+  background: var(--bg-glass-pill);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-glass-subtle);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-xs);
+}
+
+.aqua-glow {
+  box-shadow: var(--shadow-aqua);
 }
 
 /* --------------------------------------------------------------------------
@@ -61,18 +88,16 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  max-width: 1680px;
+  max-width: 1720px;
   margin: 0 auto;
   width: 100%;
 }
 
 /* --------------------------------------------------------------------------
-   App Header
+   App Header (iOS Translucent Navigation Bar)
    -------------------------------------------------------------------------- */
 .app-header {
-  background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-default);
-  padding: var(--space-xs) var(--space-lg);
+  padding: 10px var(--space-lg);
   position: sticky;
   top: 0;
   z-index: 40;
@@ -81,13 +106,13 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  box-shadow: var(--shadow-xs);
+  margin-bottom: var(--space-xs);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .app-branding {
@@ -97,69 +122,77 @@ select:focus-visible {
   text-decoration: none;
 }
 
+.app-logo-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #007aff, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
+}
+
 .app-logo-icon {
-  width: 28px;
-  height: 28px;
-  color: var(--color-primary);
+  width: 20px;
+  height: 20px;
 }
 
 .app-title {
   font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--text-primary), var(--color-primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Navigation Controls (Week & Today) */
 .week-nav {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  background-color: var(--bg-surface-secondary);
-  border: 1px solid var(--border-default);
-  padding: var(--space-2xs);
-  border-radius: var(--radius-md);
+  padding: 3px 6px;
 }
 
 .nav-btn {
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .nav-btn:hover {
-  background-color: var(--bg-surface);
+  background-color: var(--bg-glass-hover);
   color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
 }
 
 .nav-btn.today-btn {
-  font-weight: 600;
   color: var(--color-primary);
+  font-weight: 700;
 }
 
 .nav-arrow-btn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
+  font-size: 1.1rem;
 }
 
 .nav-arrow-btn:hover {
-  background-color: var(--bg-surface);
+  background-color: var(--bg-glass-hover);
   color: var(--text-primary);
 }
 
 .current-range-display {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   color: var(--text-primary);
-  padding: 0 var(--space-sm);
-  min-width: 170px;
+  padding: 0 10px;
+  min-width: 155px;
   text-align: center;
 }
 
@@ -167,144 +200,123 @@ select:focus-visible {
 .header-right {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
-/* View Mode Switcher (Quadro / Hábitos / Alimentação) */
+/* Segmented View Switcher (iOS Style) */
 .view-switcher {
   display: flex;
-  background-color: var(--bg-surface-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-2xs);
+  padding: 3px;
 }
 
 .view-btn {
-  padding: var(--space-xs) var(--space-sm);
-  font-size: 0.85rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
+  transition: all var(--transition-spring);
 }
 
 .view-btn.active {
-  background-color: var(--bg-surface);
+  background-color: var(--bg-glass-card);
   color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Live Database Sync Button */
+.sync-status-btn {
+  padding: 5px 12px;
+  font-size: 0.8rem;
   font-weight: 600;
-  box-shadow: var(--shadow-xs);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* User Profile Selector */
-.user-selector-wrap {
-  position: relative;
+.sync-status-btn:hover {
+  background-color: var(--bg-glass-hover);
+  color: var(--text-primary);
 }
 
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.sync-status-btn.is-syncing .sync-text {
+  animation: pulseSync 1.5s infinite;
+}
+
+@keyframes pulseSync {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* User Profile Trigger */
 .user-selector-btn {
-  padding: var(--space-xs) var(--space-sm);
-  background-color: var(--bg-surface-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  padding: 4px 10px 4px 5px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
 .user-selector-btn:hover {
-  background-color: var(--bg-surface-hover);
+  background-color: var(--bg-glass-hover);
 }
 
 .user-avatar-badge {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-full);
-  background-color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary), #38bdf8);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.user-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 210px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  padding: var(--space-xs);
-  display: none;
-  z-index: 50;
-}
-
-.user-dropdown-menu.open {
-  display: block;
-}
-
-.user-menu-item {
-  width: 100%;
-  padding: var(--space-xs) var(--space-sm);
-  text-align: left;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.user-menu-item:hover {
-  background-color: var(--bg-surface-hover);
-  color: var(--text-primary);
-}
-
-.user-menu-item.active {
-  font-weight: 600;
-  color: var(--color-primary);
-  background-color: var(--color-primary-light);
-}
-
-.user-menu-divider {
-  height: 1px;
-  background-color: var(--border-default);
-  margin: var(--space-xs) 0;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
 }
 
 /* Theme Toggle Button */
 .theme-toggle-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
 }
 
 .theme-toggle-btn:hover {
-  background-color: var(--bg-surface-hover);
+  background-color: var(--bg-glass-hover);
   color: var(--text-primary);
 }
 
-/* Primary Action Button */
+/* Primary Action Button (iOS Tint Glass) */
 .btn-primary {
-  background-color: var(--color-primary);
+  background: linear-gradient(135deg, #007aff, #0a84ff);
   color: #ffffff;
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 122, 255, 0.45);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 /* --------------------------------------------------------------------------
@@ -312,47 +324,49 @@ select:focus-visible {
    -------------------------------------------------------------------------- */
 .main-content {
   flex: 1;
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-xs) var(--space-lg) var(--space-xl) var(--space-lg);
   display: flex;
   flex-direction: column;
 }
 
 /* --------------------------------------------------------------------------
-   Weekly Board Grid (7 Columns Desktop - Natural Card Flow)
+   Weekly Board Grid (iOS Frosted Columns)
    -------------------------------------------------------------------------- */
 .week-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-sm);
+  gap: 10px;
   flex: 1;
 }
 
 .day-column {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 130px);
-  box-shadow: var(--shadow-xs);
-  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+  min-height: calc(100vh - 125px);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .day-column.today {
-  border-color: var(--border-day-today);
-  background-color: var(--bg-day-today);
+  border-color: rgba(0, 122, 255, 0.45);
+  box-shadow: 0 8px 30px rgba(0, 122, 255, 0.12);
 }
 
 .day-column.drag-over {
   border: 2px dashed var(--color-primary) !important;
   background-color: var(--color-primary-light) !important;
-  transform: scale(1.01);
+  transform: scale(1.015);
 }
 
 /* Day Header */
 .day-header {
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: 1px solid var(--border-default);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-glass-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -361,90 +375,79 @@ select:focus-visible {
 .day-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
 .day-name {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
 .day-number {
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
 .today-indicator-pill {
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.62rem;
+  font-weight: 800;
   text-transform: uppercase;
-  background-color: #dcfce7;
-  color: #15803d;
-  padding: 1px 6px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  padding: 1px 7px;
   border-radius: var(--radius-full);
-}
-
-[data-theme="dark"] .today-indicator-pill {
-  background-color: rgba(34, 197, 94, 0.2);
-  color: #4ade80;
-}
-
-.day-column.today .day-number {
-  color: #15803d;
-}
-
-[data-theme="dark"] .day-column.today .day-number {
-  color: #4ade80;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
 }
 
 .day-add-icon-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--bg-glass-pill);
   color: var(--text-muted);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1;
 }
 
 .day-add-icon-btn:hover {
-  background-color: var(--bg-surface-secondary);
-  color: var(--color-primary);
+  background-color: var(--color-primary);
+  color: #ffffff;
 }
 
 /* Day Body & Card Stack */
 .day-body {
-  padding: var(--space-xs);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 8px;
   flex: 1;
 }
 
 .day-card-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 8px;
   flex: 1;
 }
 
 .day-add-footer-btn {
   width: 100%;
-  padding: var(--space-xs);
+  padding: 6px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   border: 1px dashed transparent;
   margin-top: auto;
 }
 
 .day-add-footer-btn:hover {
-  background-color: var(--bg-surface-secondary);
-  border-color: var(--border-default);
+  background-color: var(--bg-glass-hover);
+  border-color: var(--border-glass);
   color: var(--color-primary);
 }
 
@@ -452,33 +455,29 @@ select:focus-visible {
   padding: var(--space-xl) var(--space-xs);
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   cursor: pointer;
   border-radius: var(--radius-sm);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
 }
 
 .day-empty-placeholder:hover {
-  background-color: var(--bg-surface-secondary);
-  color: var(--text-secondary);
+  color: var(--color-primary);
 }
 
 /* --------------------------------------------------------------------------
-   Activity Card Component
+   Activity Card Component (iOS Frosted Tactile Card)
    -------------------------------------------------------------------------- */
 .activity-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-glass-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xs);
+  gap: 4px;
   cursor: pointer;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
   position: relative;
@@ -486,7 +485,7 @@ select:focus-visible {
 }
 
 .activity-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
   border-color: var(--border-focus);
 }
@@ -502,37 +501,37 @@ select:focus-visible {
 }
 
 .activity-card.is-dragging {
-  opacity: 0.45;
-  transform: scale(0.97);
+  opacity: 0.4;
+  transform: scale(0.96);
   box-shadow: var(--shadow-lg);
 }
 
 .activity-card.completed {
-  background-color: var(--bg-card-completed);
-  opacity: 0.75;
+  background: var(--bg-card-completed);
+  opacity: 0.7;
 }
 
 .activity-card-header {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
 .activity-check-btn {
-  width: 19px;
-  height: 19px;
-  border-radius: 4px;
-  border: 1.5px solid var(--border-default);
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-glass-subtle);
   background: transparent;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: 2px;
   padding: 0;
   color: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
 .activity-check-btn:hover {
@@ -546,8 +545,8 @@ select:focus-visible {
 }
 
 .activity-title {
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 600;
   color: var(--text-primary);
   word-break: break-word;
   flex: 1;
@@ -562,15 +561,15 @@ select:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-2xs);
-  padding-left: 27px;
+  gap: 4px;
+  padding-left: 24px;
 }
 
 /* Category Badges */
 .category-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 1px var(--space-xs);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 7px;
   border-radius: var(--radius-full);
   display: inline-flex;
   align-items: center;
@@ -585,8 +584,8 @@ select:focus-visible {
 .category-outros { background-color: var(--cat-outros-bg); color: var(--cat-outros-color); border: 1px solid var(--cat-outros-border); }
 
 .time-badge {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
@@ -594,55 +593,15 @@ select:focus-visible {
 }
 
 .recurrence-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
 }
 
 /* --------------------------------------------------------------------------
-   Today View
-   -------------------------------------------------------------------------- */
-.today-view-container {
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.today-view-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-default);
-  padding-bottom: var(--space-sm);
-}
-
-.today-view-title {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.today-view-subtitle {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.today-block-card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  box-shadow: var(--shadow-sm);
-}
-
-/* --------------------------------------------------------------------------
-   Habit Tracker View Styles (Weekly & Monthly)
+   Habit Tracker View Styles (iOS Translucent Matrix)
    -------------------------------------------------------------------------- */
 .habits-view-container {
-  max-width: 1200px;
+  max-width: 1240px;
   margin: 0 auto;
   width: 100%;
   display: flex;
@@ -656,19 +615,20 @@ select:focus-visible {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-sm);
-  border-bottom: 1px solid var(--border-default);
-  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-glass-subtle);
+  padding-bottom: var(--space-xs);
 }
 
 .habits-title {
   font-family: var(--font-display);
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
 .habits-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -678,19 +638,12 @@ select:focus-visible {
   gap: var(--space-xs);
 }
 
-.habits-empty-state {
-  background-color: var(--bg-surface);
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2xl) var(--space-lg);
-  text-align: center;
-}
-
-/* Habits Weekly Table */
 .habits-table-card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
@@ -707,16 +660,16 @@ select:focus-visible {
 
 .habits-table th,
 .habits-table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border-default);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-glass-subtle);
 }
 
 .habits-table thead th {
-  background-color: var(--bg-surface-secondary);
-  font-size: 0.78rem;
-  font-weight: 700;
+  background: var(--bg-glass-pill);
+  font-size: 0.76rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
@@ -725,19 +678,14 @@ select:focus-visible {
   width: 60px;
 }
 
-.habit-day-th.today-col,
-.habit-check-cell.today-col {
-  background-color: var(--bg-day-today);
-}
-
 .habit-day-num {
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
 .habit-row:hover {
-  background-color: var(--bg-surface-hover);
+  background-color: var(--bg-glass-hover);
 }
 
 .habit-name-cell {
@@ -752,7 +700,7 @@ select:focus-visible {
 }
 
 .habit-name {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -764,25 +712,25 @@ select:focus-visible {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-full);
-  border: 1.5px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  border: 1.5px solid var(--border-glass-subtle);
+  background: var(--bg-glass-pill);
   color: transparent;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0 auto;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-spring);
 }
 
 .habit-check-btn:hover {
   border-color: var(--color-primary);
-  transform: scale(1.08);
+  transform: scale(1.12);
 }
 
 .habit-check-btn.checked {
-  background-color: #10b981;
+  background: linear-gradient(135deg, #10b981, #059669);
   border-color: #10b981;
   color: #ffffff;
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
 
 .habit-progress-wrap {
@@ -794,21 +742,21 @@ select:focus-visible {
 .habit-progress-bar-bg {
   flex: 1;
   height: 8px;
-  background-color: var(--bg-surface-secondary);
+  background: var(--bg-glass-pill);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
 
 .habit-progress-bar-fill {
   height: 100%;
-  background-color: #10b981;
+  background: linear-gradient(90deg, #38bdf8, #10b981);
   border-radius: var(--radius-full);
-  transition: width 0.3s ease;
+  transition: width 0.4s ease;
 }
 
 .habit-progress-text {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
   color: var(--text-secondary);
   min-width: 32px;
 }
@@ -821,9 +769,11 @@ select:focus-visible {
 }
 
 .habit-month-card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
   padding: var(--space-md);
   box-shadow: var(--shadow-sm);
 }
@@ -834,21 +784,15 @@ select:focus-visible {
   justify-content: space-between;
   margin-bottom: var(--space-sm);
   padding-bottom: var(--space-xs);
-  border-bottom: 1px solid var(--border-default);
-}
-
-.habit-month-stats {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  border-bottom: 1px solid var(--border-glass-subtle);
 }
 
 .habit-consistency-badge {
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 2px 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 2px 10px;
   border-radius: var(--radius-full);
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(16, 185, 129, 0.18);
   color: #10b981;
 }
 
@@ -861,11 +805,11 @@ select:focus-visible {
 .habit-month-day-btn {
   height: 36px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass-subtle);
+  background: var(--bg-glass-pill);
   color: var(--text-secondary);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   transition: all var(--transition-fast);
 }
 
@@ -874,14 +818,10 @@ select:focus-visible {
 }
 
 .habit-month-day-btn.active {
-  background-color: #10b981;
+  background: linear-gradient(135deg, #10b981, #059669);
   border-color: #10b981;
   color: #ffffff;
-  font-weight: 700;
-}
-
-.habit-month-day-btn.is-today {
-  border: 2px solid var(--color-primary);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
 }
 
 .habit-icon-picker {
@@ -893,9 +833,9 @@ select:focus-visible {
 .habit-icon-btn {
   width: 38px;
   height: 38px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass-subtle);
+  background: var(--bg-glass-pill);
   font-size: 1.2rem;
 }
 
@@ -903,10 +843,11 @@ select:focus-visible {
 .habit-icon-btn.selected {
   border-color: var(--color-primary);
   background-color: var(--color-primary-light);
+  transform: scale(1.08);
 }
 
 /* --------------------------------------------------------------------------
-   Weekly Meal Planner Styles
+   Weekly Meal Planner Styles (iOS Frosted Columns)
    -------------------------------------------------------------------------- */
 .meals-view-container {
   display: flex;
@@ -921,47 +862,48 @@ select:focus-visible {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  border-bottom: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-glass-subtle);
   padding-bottom: var(--space-xs);
 }
 
 .meals-title {
   font-family: var(--font-display);
   font-size: 1.4rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
 .meals-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
 .meals-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-sm);
+  gap: 10px;
   flex: 1;
 }
 
 .meal-day-column {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-xs);
-  min-height: calc(100vh - 150px);
+  box-shadow: var(--shadow-sm);
+  min-height: calc(100vh - 145px);
 }
 
 .meal-day-column.today {
-  border-color: var(--border-day-today);
-  background-color: var(--bg-day-today);
+  border-color: rgba(0, 122, 255, 0.45);
 }
 
 .meal-day-header {
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: 1px solid var(--border-default);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-glass-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -970,36 +912,38 @@ select:focus-visible {
 .meal-day-meta {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
 .meal-day-name {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
 .meal-day-num {
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
 .meal-day-body {
-  padding: var(--space-xs);
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 8px;
   flex: 1;
 }
 
 .meal-card {
-  background-color: var(--bg-surface-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: var(--space-xs);
+  background: var(--bg-glass-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-glass-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1009,13 +953,13 @@ select:focus-visible {
 
 .meal-card:hover {
   border-color: var(--border-focus);
-  background-color: var(--bg-surface-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .meal-card.completed {
-  opacity: 0.7;
-  background-color: var(--bg-card-completed);
+  opacity: 0.65;
+  background: var(--bg-card-completed);
 }
 
 .meal-card-top {
@@ -1026,7 +970,7 @@ select:focus-visible {
 
 .meal-type-badge {
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-secondary);
   display: inline-flex;
   align-items: center;
@@ -1034,14 +978,14 @@ select:focus-visible {
 }
 
 .meal-check-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 1.5px solid var(--border-default);
-  background-color: var(--bg-surface);
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-glass-subtle);
+  background: var(--bg-glass-pill);
   color: transparent;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1072,11 +1016,11 @@ select:focus-visible {
 .meal-text.placeholder {
   color: var(--text-muted);
   font-style: italic;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 /* --------------------------------------------------------------------------
-   Modal Components
+   Modal Components (iOS Translucent Floating Sheet)
    -------------------------------------------------------------------------- */
 .modal-backdrop {
   position: fixed;
@@ -1085,7 +1029,8 @@ select:focus-visible {
   right: 0;
   bottom: 0;
   background-color: var(--modal-backdrop);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -1102,9 +1047,11 @@ select:focus-visible {
 }
 
 .modal-dialog {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
+  background: var(--bg-glass-panel);
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 480px;
@@ -1112,8 +1059,8 @@ select:focus-visible {
   flex-direction: column;
   max-height: min(94vh, 620px);
   overflow: hidden;
-  transform: scale(0.96) translateY(8px);
-  transition: transform var(--transition-normal);
+  transform: scale(0.95) translateY(12px);
+  transition: transform var(--transition-spring);
 }
 
 .modal-backdrop.open .modal-dialog {
@@ -1121,8 +1068,8 @@ select:focus-visible {
 }
 
 .modal-header {
-  padding: 12px 18px;
-  border-bottom: 1px solid var(--border-default);
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-glass-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1131,38 +1078,39 @@ select:focus-visible {
 
 .modal-title {
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
 .modal-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   color: var(--color-primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .modal-close-btn {
   width: 30px;
   height: 30px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
+  background: var(--bg-glass-pill);
   color: var(--text-muted);
   font-size: 1.25rem;
 }
 
 .modal-close-btn:hover {
-  background-color: var(--bg-surface-hover);
+  background-color: var(--bg-glass-hover);
   color: var(--text-primary);
 }
 
 .modal-body {
-  padding: 14px 18px;
+  padding: 14px 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   flex: 1;
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .form-group {
@@ -1173,25 +1121,26 @@ select:focus-visible {
 
 .form-label {
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
 }
 
 .form-input,
 .form-select {
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  border: 1px solid var(--border-glass-subtle);
+  background: var(--bg-glass-pill);
   color: var(--text-primary);
   font-size: 0.9rem;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .form-input:focus,
 .form-select:focus {
   border-color: var(--border-focus);
-  background-color: var(--bg-surface);
+  background: var(--bg-glass-card);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
 }
 
 .form-row {
@@ -1201,9 +1150,9 @@ select:focus-visible {
 }
 
 .modal-footer {
-  padding: 10px 18px;
-  border-top: 1px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-glass-subtle);
+  background: var(--bg-glass-pill);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1211,37 +1160,38 @@ select:focus-visible {
 }
 
 .btn-secondary {
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface);
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-glass-subtle);
+  background: var(--bg-glass-card);
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.85rem;
 }
 
 .btn-secondary:hover {
-  background-color: var(--bg-surface-hover);
+  background-color: var(--bg-glass-hover);
   color: var(--text-primary);
 }
 
 .btn-danger {
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
   color: #ef4444;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .btn-danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: rgba(239, 68, 68, 0.2);
 }
 
 .prompt-choice-btn {
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1.5px solid var(--border-default);
-  background-color: var(--bg-surface-secondary);
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border-glass-subtle);
+  background: var(--bg-glass-card);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1252,7 +1202,7 @@ select:focus-visible {
 .prompt-choice-btn:hover {
   border-color: var(--color-primary);
   background-color: var(--color-primary-light);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 /* --------------------------------------------------------------------------
@@ -1262,8 +1212,8 @@ select:focus-visible {
   display: none;
   overflow-x: auto;
   gap: var(--space-xs);
-  padding: var(--space-2xs) 0 var(--space-xs) 0;
-  margin-bottom: var(--space-sm);
+  padding: 4px 0 10px 0;
+  margin-bottom: var(--space-xs);
   scrollbar-width: none;
 }
 
@@ -1273,36 +1223,24 @@ select:focus-visible {
 
 .mobile-day-tab {
   flex-shrink: 0;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-md);
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--bg-glass-panel);
+  border: 1px solid var(--border-glass-subtle);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: var(--space-2xs);
-  min-height: 44px;
+  min-height: 40px;
 }
 
 .mobile-day-tab.active {
-  background-color: var(--color-primary);
+  background: var(--color-primary);
   color: #ffffff;
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.tab-badge {
-  font-size: 0.72rem;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-}
-
-.mobile-day-tab.active .tab-badge {
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35);
 }
 
 @media (max-width: 1100px) {
@@ -1319,7 +1257,7 @@ select:focus-visible {
 
 @media (max-width: 768px) {
   .app-header {
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-xs);
     gap: var(--space-xs);
   }
 
@@ -1332,17 +1270,18 @@ select:focus-visible {
     width: 100%;
     justify-content: space-between;
     padding-top: var(--space-xs);
-    border-top: 1px solid var(--border-default);
+    border-top: 1px solid var(--border-glass-subtle);
+    overflow-x: auto;
   }
 
   .current-range-display {
     min-width: unset;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     padding: 0 var(--space-xs);
   }
 
   .main-content {
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-xs);
   }
 
   .mobile-day-tabs {

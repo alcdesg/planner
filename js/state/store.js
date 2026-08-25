@@ -1,51 +1,66 @@
 /**
  * @file store.js
  * Central reactive application state manager.
- * Supports Activities, Habits (weekly/monthly), and Meal Planning.
+ * Supports direct PostgreSQL Supabase synchronization, Auth session, Habits & Meals.
  */
 
 import { generateId, DateUtils, RECURRENCE_TYPES, ACTIVITY_STATUS } from '../domain/models.js';
 import { HabitUtils } from '../domain/habitsModel.js';
 import { MealUtils } from '../domain/mealPlanModel.js';
+import { supabaseConfig } from '../config/supabaseClient.js';
+import { SupabaseService } from '../storage/supabaseService.js';
 import { StorageService } from '../storage/storage.js';
 
 class AppStore {
   constructor() {
     this.listeners = [];
 
-    // 1. Users
-    this.users = StorageService.getUsers();
-    let activeId = StorageService.getActiveUserId();
-    if (!this.users.find(u => u.id === activeId)) {
-      activeId = this.users[0]?.id || 'usr_default';
-      StorageService.setActiveUserId(activeId);
-    }
-    this.activeUserId = activeId;
+    // 1. Session & Auth State
+    this.session = null;
+    this.currentUser = null;
+    this.syncStatus = 'synced'; // 'synced' | 'syncing' | 'error'
 
     // 2. Navigation state
     const today = new Date();
     this.currentMonday = DateUtils.getMondayOfWeek(today);
     this.todayDate = today;
-    this.viewMode = 'week'; // 'week' | 'today' | 'habits' | 'meals'
+    this.viewMode = 'week'; // 'week' | 'habits' | 'meals'
 
-    // Habit view mode ('week' | 'month')
     this.habitViewMode = 'week';
     this.habitMonthDate = new Date(today.getFullYear(), today.getMonth(), 1, 12, 0, 0);
 
-    // Initial mobile active day
     const currentDayOfWeek = today.getDay();
     this.activeMobileDayIndex = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
 
-    // 3. User settings & Theme
-    const userSettings = StorageService.getUserSettings(this.activeUserId);
-    this.theme = userSettings.theme || 'system';
+    // 3. Theme
+    this.theme = 'system';
 
-    // 4. Data
-    this.activities = StorageService.getActivities(this.activeUserId);
-    this.habits = StorageService.getHabits(this.activeUserId);
-    this.meals = StorageService.getMeals(this.activeUserId);
+    // 4. Data lists (loaded from Supabase / fallback)
+    this.activities = [];
+    this.habits = [];
+    this.meals = {};
 
+    this.initAuth();
     this.applyTheme(this.theme);
+  }
+
+  async initAuth() {
+    if (supabaseConfig.isConfigured()) {
+      try {
+        this.session = await SupabaseService.getCurrentSession();
+        this.currentUser = this.session?.user || null;
+
+        SupabaseService.onAuthStateChange(async (event, session) => {
+          this.session = session;
+          this.currentUser = session?.user || null;
+          await this.syncNow();
+        });
+      } catch (e) {
+        console.warn('Auth init warning:', e);
+      }
+    }
+
+    await this.syncNow();
   }
 
   subscribe(listener) {
@@ -60,13 +75,13 @@ class AppStore {
   }
 
   getState() {
-    const activeUser = this.users.find(u => u.id === this.activeUserId) || this.users[0];
     const weekDays = DateUtils.getWeekDays(this.currentMonday);
 
     return {
-      users: this.users,
-      activeUser,
-      activeUserId: this.activeUserId,
+      session: this.session,
+      currentUser: this.currentUser,
+      syncStatus: this.syncStatus,
+      isSupabaseConnected: supabaseConfig.isConfigured(),
       currentMonday: this.currentMonday,
       todayDate: this.todayDate,
       weekDays,
@@ -82,45 +97,36 @@ class AppStore {
   }
 
   /* ------------------------------------------------------------------------
-     User Management Actions
+     Sync & Direct Database Operations
      ------------------------------------------------------------------------ */
-  switchUser(userId) {
-    if (userId === this.activeUserId) return;
-    const user = this.users.find(u => u.id === userId);
-    if (!user) return;
-
-    this.activeUserId = userId;
-    StorageService.setActiveUserId(userId);
-
-    this.activities = StorageService.getActivities(userId);
-    this.habits = StorageService.getHabits(userId);
-    this.meals = StorageService.getMeals(userId);
-
-    const settings = StorageService.getUserSettings(userId);
-    this.theme = settings.theme || 'system';
-    this.applyTheme(this.theme);
-
+  async syncNow() {
+    this.syncStatus = 'syncing';
     this.notify();
-  }
 
-  addUser(name) {
-    if (!name || !name.trim()) return;
-    const trimmedName = name.trim();
-    const newUser = {
-      id: 'usr_' + generateId(),
-      name: trimmedName,
-      avatarInitial: trimmedName.charAt(0).toUpperCase()
-    };
+    try {
+      if (supabaseConfig.isConfigured() && this.currentUser) {
+        // Direct fetch from Supabase
+        const [activities, habits, meals] = await Promise.all([
+          SupabaseService.fetchActivities(),
+          SupabaseService.fetchHabits(),
+          SupabaseService.fetchMeals()
+        ]);
+        this.activities = activities;
+        this.habits = habits;
+        this.meals = meals;
+      } else {
+        // Fallback local storage
+        const activeUserId = StorageService.getActiveUserId();
+        this.activities = StorageService.getActivities(activeUserId);
+        this.habits = StorageService.getHabits(activeUserId);
+        this.meals = StorageService.getMeals(activeUserId);
+      }
+      this.syncStatus = 'synced';
+    } catch (e) {
+      console.error('Sync failed:', e);
+      this.syncStatus = 'error';
+    }
 
-    this.users.push(newUser);
-    StorageService.saveUsers(this.users);
-    this.switchUser(newUser.id);
-  }
-
-  clearAllActivities(userId = null) {
-    const targetUserId = userId || this.activeUserId;
-    this.activities = [];
-    StorageService.saveActivities(targetUserId, []);
     this.notify();
   }
 
@@ -129,7 +135,6 @@ class AppStore {
      ------------------------------------------------------------------------ */
   setTheme(theme) {
     this.theme = theme;
-    StorageService.saveUserSettings(this.activeUserId, { theme });
     this.applyTheme(theme);
     this.notify();
   }
@@ -175,12 +180,12 @@ class AppStore {
   }
 
   /* ------------------------------------------------------------------------
-     Activity Actions
+     Activity Actions (Direct to Database)
      ------------------------------------------------------------------------ */
-  addActivity(data) {
+  async addActivity(data) {
     const newActivity = {
       id: generateId(),
-      userId: this.activeUserId,
+      userId: this.currentUser?.id || 'usr_default',
       title: data.title.trim(),
       date: data.date,
       time: data.time || '',
@@ -196,13 +201,26 @@ class AppStore {
       updatedAt: new Date().toISOString()
     };
 
+    // Optimistic UI update
     this.activities = [...this.activities, newActivity];
-    StorageService.saveActivities(this.activeUserId, this.activities);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser) {
+      try {
+        await SupabaseService.insertActivity(newActivity);
+      } catch (e) {
+        console.error('Error saving activity:', e);
+      }
+    } else {
+      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
+    }
+
     return newActivity;
   }
 
-  updateActivity(id, data, scope = 'all', occurrenceDate = null) {
+  async updateActivity(id, data, scope = 'all', occurrenceDate = null) {
+    let updatedTarget = null;
+
     this.activities = this.activities.map(act => {
       if (act.id !== id) return act;
 
@@ -214,26 +232,39 @@ class AppStore {
           category: data.category || act.category
         };
 
-        return {
+        updatedTarget = {
           ...act,
           overrides: { ...overrides },
           updatedAt: new Date().toISOString()
         };
+        return updatedTarget;
       }
 
-      return {
+      updatedTarget = {
         ...act,
         ...data,
         title: (data.title || act.title).trim(),
         updatedAt: new Date().toISOString()
       };
+      return updatedTarget;
     });
 
-    StorageService.saveActivities(this.activeUserId, this.activities);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
+      try {
+        await SupabaseService.updateActivity(id, updatedTarget);
+      } catch (e) {
+        console.error('Error updating activity in Supabase:', e);
+      }
+    } else {
+      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
+    }
   }
 
-  deleteActivity(id, scope = 'all', occurrenceDate = null) {
+  async deleteActivity(id, scope = 'all', occurrenceDate = null) {
+    let updatedTarget = null;
+
     if (scope === 'this' && occurrenceDate) {
       this.activities = this.activities.map(act => {
         if (act.id !== id) return act;
@@ -241,25 +272,40 @@ class AppStore {
         if (act.recurrence && act.recurrence !== RECURRENCE_TYPES.NONE) {
           const deletedDates = new Set(act.deletedDates || []);
           deletedDates.add(occurrenceDate);
-          return {
+          updatedTarget = {
             ...act,
             deletedDates: Array.from(deletedDates),
             updatedAt: new Date().toISOString()
           };
+          return updatedTarget;
         }
         return act;
       }).filter(act => {
         return act.recurrence && act.recurrence !== RECURRENCE_TYPES.NONE ? true : act.id !== id;
       });
+
+      this.notify();
+
+      if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
+        await SupabaseService.updateActivity(id, updatedTarget);
+      }
     } else {
       this.activities = this.activities.filter(act => act.id !== id);
+      this.notify();
+
+      if (supabaseConfig.isConfigured() && this.currentUser) {
+        await SupabaseService.deleteActivity(id);
+      }
     }
 
-    StorageService.saveActivities(this.activeUserId, this.activities);
-    this.notify();
+    if (!supabaseConfig.isConfigured() || !this.currentUser) {
+      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
+    }
   }
 
-  toggleActivityCompletion(id, occurrenceDate) {
+  async toggleActivityCompletion(id, occurrenceDate) {
+    let updatedTarget = null;
+
     this.activities = this.activities.map(act => {
       if (act.id !== id) return act;
 
@@ -270,30 +316,37 @@ class AppStore {
         } else {
           completedDates.add(occurrenceDate);
         }
-        return {
+        updatedTarget = {
           ...act,
           completedDates: Array.from(completedDates),
           updatedAt: new Date().toISOString()
         };
+        return updatedTarget;
       }
 
       const nextStatus = act.status === ACTIVITY_STATUS.COMPLETED
         ? ACTIVITY_STATUS.PENDING
         : ACTIVITY_STATUS.COMPLETED;
 
-      return {
+      updatedTarget = {
         ...act,
         status: nextStatus,
         updatedAt: new Date().toISOString()
       };
+      return updatedTarget;
     });
 
-    StorageService.saveActivities(this.activeUserId, this.activities);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
+      await SupabaseService.updateActivity(id, updatedTarget);
+    } else {
+      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
+    }
   }
 
   /* ------------------------------------------------------------------------
-     Habit Actions (Weekly & Monthly)
+     Habits Actions (Direct to Database)
      ------------------------------------------------------------------------ */
   setHabitViewMode(mode) {
     this.habitViewMode = mode;
@@ -314,56 +367,81 @@ class AppStore {
     this.notify();
   }
 
-  addHabit(data) {
+  async addHabit(data) {
     const newHabit = HabitUtils.createHabit(
-      this.activeUserId,
+      this.currentUser?.id || 'usr_default',
       data.name,
       data.icon,
       data.targetDays || 7
     );
+
     this.habits = [...this.habits, newHabit];
-    StorageService.saveHabits(this.activeUserId, this.habits);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser) {
+      await SupabaseService.insertHabit(newHabit);
+    } else {
+      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    }
     return newHabit;
   }
 
-  updateHabit(id, data) {
+  async updateHabit(id, data) {
+    let updatedTarget = null;
     this.habits = this.habits.map(h => {
       if (h.id === id) {
-        return {
+        updatedTarget = {
           ...h,
           name: (data.name || h.name).trim(),
           icon: data.icon || h.icon,
           targetDays: data.targetDays !== undefined ? data.targetDays : h.targetDays
         };
+        return updatedTarget;
       }
       return h;
     });
-    StorageService.saveHabits(this.activeUserId, this.habits);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
+      await SupabaseService.updateHabit(id, updatedTarget);
+    } else {
+      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    }
   }
 
-  deleteHabit(id) {
+  async deleteHabit(id) {
     this.habits = this.habits.filter(h => h.id !== id);
-    StorageService.saveHabits(this.activeUserId, this.habits);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser) {
+      await SupabaseService.deleteHabit(id);
+    } else {
+      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    }
   }
 
-  toggleHabitDate(id, dateKey) {
+  async toggleHabitDate(id, dateKey) {
+    let updatedTarget = null;
     this.habits = this.habits.map(h => {
       if (h.id === id) {
-        return HabitUtils.toggleDate(h, dateKey);
+        updatedTarget = HabitUtils.toggleDate(h, dateKey);
+        return updatedTarget;
       }
       return h;
     });
-    StorageService.saveHabits(this.activeUserId, this.habits);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
+      await SupabaseService.updateHabit(id, updatedTarget);
+    } else {
+      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    }
   }
 
   /* ------------------------------------------------------------------------
-     Meal Plan Actions (Weekly & Checkboxes)
+     Meal Plan Actions (Direct to Database)
      ------------------------------------------------------------------------ */
-  updateMeal(dateKey, mealType, text) {
+  async updateMeal(dateKey, mealType, text) {
     const currentDay = this.meals[dateKey] || MealUtils.getEmptyDayMeals();
     const updatedDay = {
       ...currentDay,
@@ -377,11 +455,16 @@ class AppStore {
       ...this.meals,
       [dateKey]: updatedDay
     };
-    StorageService.saveMeals(this.activeUserId, this.meals);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser) {
+      await SupabaseService.upsertMealDay(dateKey, updatedDay);
+    } else {
+      StorageService.saveMeals(StorageService.getActiveUserId(), this.meals);
+    }
   }
 
-  toggleMealComplete(dateKey, mealType) {
+  async toggleMealComplete(dateKey, mealType) {
     const currentDay = this.meals[dateKey] || MealUtils.getEmptyDayMeals();
     const currentMeal = currentDay[mealType] || { text: '', completed: false };
 
@@ -397,27 +480,44 @@ class AppStore {
       ...this.meals,
       [dateKey]: updatedDay
     };
-    StorageService.saveMeals(this.activeUserId, this.meals);
     this.notify();
+
+    if (supabaseConfig.isConfigured() && this.currentUser) {
+      await SupabaseService.upsertMealDay(dateKey, updatedDay);
+    } else {
+      StorageService.saveMeals(StorageService.getActiveUserId(), this.meals);
+    }
   }
 
-  replicateMealToWeek(mealType, text, weekDays) {
+  async replicateMealToWeek(mealType, text, weekDays) {
     const updatedMeals = { ...this.meals };
+    const updatePromises = [];
+
     weekDays.forEach(day => {
       const key = DateUtils.formatDateKey(day);
       const dayMeals = updatedMeals[key] || MealUtils.getEmptyDayMeals();
-      updatedMeals[key] = {
+      const newDayMeals = {
         ...dayMeals,
         [mealType]: {
           text: text.trim(),
           completed: false
         }
       };
+      updatedMeals[key] = newDayMeals;
+
+      if (supabaseConfig.isConfigured() && this.currentUser) {
+        updatePromises.push(SupabaseService.upsertMealDay(key, newDayMeals));
+      }
     });
 
     this.meals = updatedMeals;
-    StorageService.saveMeals(this.activeUserId, this.meals);
     this.notify();
+
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    } else {
+      StorageService.saveMeals(StorageService.getActiveUserId(), this.meals);
+    }
   }
 }
 
