@@ -406,12 +406,10 @@ export const AuthModal = {
             successDiv.style.display = 'block';
           } else if (this.activeTab === 'signup') {
             await SupabaseService.createManagedUser({ email, password, name, role: 'member' });
-            successDiv.textContent = '✔ Conta criada com sucesso! Você já pode entrar com suas credenciais.';
-            successDiv.style.display = 'block';
-            setTimeout(() => {
-              this.activeTab = 'login';
-              this.render();
-            }, 1800);
+            // Automatic instant login right after signup
+            await SupabaseService.signIn(email, password);
+            await store.syncNow();
+            this.close();
           } else {
             await SupabaseService.signIn(email, password);
             await store.syncNow();
