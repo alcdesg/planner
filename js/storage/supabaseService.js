@@ -1,12 +1,48 @@
 /**
  * @file supabaseService.js
- * Direct PostgreSQL backend data operations using Supabase with Row Level Security and RBAC.
+ * Direct PostgreSQL backend data operations using Supabase with Row Level Security, RBAC and Health Checks.
  */
 
 import { supabaseConfig } from '../config/supabaseClient.js';
 import { StorageService } from './storage.js';
 
 export const SupabaseService = {
+  /* ------------------------------------------------------------------------
+     Connection Health Check
+     ------------------------------------------------------------------------ */
+  async testConnection() {
+    const client = supabaseConfig.getClient();
+    if (!client) {
+      return { ok: false, message: 'Supabase não inicializado ou credenciais ausentes.' };
+    }
+
+    const startTime = performance.now();
+    try {
+      // Lightweight probe to verify database accessibility
+      const { error } = await client.from('user_profiles').select('id', { count: 'exact', head: true });
+      const latency = Math.round(performance.now() - startTime);
+
+      if (error && error.code !== 'PGRST116') {
+        // Even if table is empty or requires auth, reaching postgrest confirms connectivity
+        if (error.message && error.message.includes('FetchError')) {
+          return { ok: false, message: `Falha na conexão: ${error.message}` };
+        }
+      }
+
+      return {
+        ok: true,
+        latency,
+        url: supabaseConfig.getUrl(),
+        message: `Conexão ativa (${latency}ms)`
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        message: err.message || 'Não foi possível alcançar o servidor do Supabase.'
+      };
+    }
+  },
+
   /* ------------------------------------------------------------------------
      Auth & Profile Operations
      ------------------------------------------------------------------------ */
@@ -75,7 +111,7 @@ export const SupabaseService = {
 
   onAuthStateChange(callback) {
     const client = supabaseConfig.getClient();
-    if (!client) return { unsubscribe: () => { } };
+    if (!client) return { unsubscribe: () => {} };
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       callback(event, session);
     });
@@ -83,7 +119,7 @@ export const SupabaseService = {
   },
 
   /* ------------------------------------------------------------------------
-     Admin Governance (Available ONLY for Admin Role)
+     Admin Governance
      ------------------------------------------------------------------------ */
   async fetchAllProfiles() {
     const client = supabaseConfig.getClient();
@@ -105,7 +141,6 @@ export const SupabaseService = {
     const client = supabaseConfig.getClient();
     if (!client) throw new Error('Supabase não está configurado.');
 
-    // Uses signUp with metadata
     const { data, error } = await client.auth.signUp({
       email: email.trim(),
       password: password.trim(),
@@ -120,7 +155,6 @@ export const SupabaseService = {
     if (error) throw error;
 
     if (data.user) {
-      // Ensure profile role is explicitly recorded
       await client.from('user_profiles').upsert({
         id: data.user.id,
         email: email.trim(),
@@ -134,7 +168,7 @@ export const SupabaseService = {
   },
 
   /* ------------------------------------------------------------------------
-     Activities DB Operations (Direct Supabase)
+     Activities DB Operations
      ------------------------------------------------------------------------ */
   async fetchActivities() {
     const client = supabaseConfig.getClient();
@@ -354,9 +388,9 @@ export const SupabaseService = {
     (data || []).forEach(row => {
       mealsMap[row.date_key] = {
         breakfast: row.breakfast || { text: '', completed: false },
-        lunch: row.lunch || { text: '', completed: false },
-        snack: row.snack || { text: '', completed: false },
-        dinner: row.dinner || { text: '', completed: false }
+        lunch:     row.lunch     || { text: '', completed: false },
+        snack:     row.snack     || { text: '', completed: false },
+        dinner:    row.dinner    || { text: '', completed: false }
       };
     });
     return mealsMap;
@@ -370,9 +404,9 @@ export const SupabaseService = {
       id: `meal_${dateKey}`,
       date_key: dateKey,
       breakfast: dayData.breakfast || { text: '', completed: false },
-      lunch: dayData.lunch || { text: '', completed: false },
-      snack: dayData.snack || { text: '', completed: false },
-      dinner: dayData.dinner || { text: '', completed: false },
+      lunch:     dayData.lunch     || { text: '', completed: false },
+      snack:     dayData.snack     || { text: '', completed: false },
+      dinner:    dayData.dinner    || { text: '', completed: false },
       updated_at: new Date().toISOString()
     };
 

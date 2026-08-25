@@ -1,7 +1,6 @@
 /**
  * @file authModal.js
- * Clean, secure iOS Aqua Authentication Gate and Supabase Setup Modal.
- * Zero hardcoded credentials or mock shortcuts.
+ * Clean, secure iOS Aqua Authentication Gate with Live Supabase Connection Health Status.
  */
 
 import { supabaseConfig } from '../config/supabaseClient.js';
@@ -11,6 +10,7 @@ import { store } from '../state/store.js';
 export const AuthModal = {
   container: null,
   activeTab: 'login', // 'login' | 'signup' | 'config'
+  connectionStatus: { tested: false, ok: false, message: 'Verificando conexão...' },
 
   init() {
     this.container = document.getElementById('auth-modal-container');
@@ -40,17 +40,50 @@ export const AuthModal = {
     return this.container && this.container.classList.contains('open');
   },
 
-  open(tab = 'login') {
+  async open(tab = 'login') {
     this.activeTab = tab;
     this.render();
     if (this.container) {
       this.container.classList.add('open');
     }
+    await this.checkConnection();
   },
 
   close() {
     if (this.container) {
       this.container.classList.remove('open');
+    }
+  },
+
+  async checkConnection() {
+    const result = await SupabaseService.testConnection();
+    this.connectionStatus = { tested: true, ...result };
+    this.updateConnectionBadge();
+  },
+
+  updateConnectionBadge() {
+    const badge = this.container?.querySelector('#live-connection-badge');
+    if (!badge) return;
+
+    if (!this.connectionStatus.tested) {
+      badge.innerHTML = `
+        <span class="sync-dot" style="background-color: #f59e0b;"></span>
+        <span style="color: var(--text-secondary);">Testando conexão com Supabase...</span>
+      `;
+    } else if (this.connectionStatus.ok) {
+      badge.innerHTML = `
+        <span class="sync-dot" style="background-color: #10b981;"></span>
+        <span style="color: #10b981; font-weight: 700;">🟢 Conexão Supabase Ativa (${this.connectionStatus.latency}ms)</span>
+      `;
+      badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+      badge.style.background = 'rgba(16, 185, 129, 0.08)';
+    } else {
+      badge.innerHTML = `
+        <span class="sync-dot" style="background-color: #ef4444;"></span>
+        <span style="color: #ef4444; font-weight: 700;">🔴 ${this.escapeHtml(this.connectionStatus.message)}</span>
+      `;
+      badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      badge.style.background = 'rgba(239, 68, 68, 0.08)';
     }
   },
 
@@ -125,6 +158,12 @@ export const AuthModal = {
         </div>
 
         <div style="padding: 12px 18px 0 18px;">
+          <!-- Live Connection Status Badge -->
+          <div id="live-connection-badge" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 12px; border-radius: var(--radius-full); border: 1px solid var(--border-glass-subtle); background: var(--bg-glass-pill); font-size: 0.78rem; margin-bottom: 10px; transition: all var(--transition-normal);">
+            <span class="sync-dot" style="background-color: #f59e0b;"></span>
+            <span style="color: var(--text-secondary);">Verificando conexão com Supabase...</span>
+          </div>
+
           <div class="view-switcher" style="width: 100%;">
             <button type="button" class="view-btn ${this.activeTab === 'login' ? 'active' : ''}" style="flex: 1;" id="tab-login">Entrar</button>
             <button type="button" class="view-btn ${this.activeTab === 'signup' ? 'active' : ''}" style="flex: 1;" id="tab-signup">Criar Conta</button>
@@ -141,26 +180,10 @@ export const AuthModal = {
     `;
 
     this.attachEvents();
+    this.updateConnectionBadge();
   },
 
   renderAuthForm(isConfigured) {
-    if (!isConfigured) {
-      return `
-        <div style="text-align: center; padding: 16px 8px;">
-          <div style="font-size: 2rem; margin-bottom: 8px;">⚡</div>
-          <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-            Insira sua Anon Key do Supabase
-          </h3>
-          <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;">
-            A URL do seu projeto já está pré-configurada (<code style="font-size: 0.75rem;">txumkevqlgjdyqqlmxlh.supabase.co</code>). Insira a Anon Key pública para conectar.
-          </p>
-          <button type="button" class="btn-primary" id="btn-go-config" style="width: 100%; justify-content: center;">
-            ⚙️ Inserir Anon Key
-          </button>
-        </div>
-      `;
-    }
-
     const isSignUp = this.activeTab === 'signup';
 
     return `
@@ -180,12 +203,12 @@ export const AuthModal = {
         ` : ''}
 
         <div class="form-group">
-          <label class="form-label" for="auth-email-input">E-mail corporativo ou pessoal *</label>
+          <label class="form-label" for="auth-email-input">E-mail *</label>
           <input
             type="email"
             id="auth-email-input"
             class="form-input"
-            placeholder="seuemail@planner.com.br"
+            placeholder="alcides@planner.com.br"
             required
             autocomplete="email"
           />
@@ -238,9 +261,14 @@ export const AuthModal = {
           >${this.escapeHtml(supabaseConfig.getAnonKey())}</textarea>
         </div>
 
-        <button type="submit" class="btn-primary" style="margin-top: 6px; padding: 10px; width: 100%; justify-content: center;">
-          Salvar e Conectar ao Supabase
-        </button>
+        <div style="display: flex; gap: 8px; margin-top: 6px;">
+          <button type="button" class="btn-secondary" id="btn-test-connection-manual" style="flex: 1; justify-content: center; font-size: 0.8rem;">
+            ⚡ Testar Conexão
+          </button>
+          <button type="submit" class="btn-primary" style="flex: 1; justify-content: center; font-size: 0.8rem;">
+            Salvar e Conectar
+          </button>
+        </div>
       </form>
     `;
   },
@@ -261,9 +289,27 @@ export const AuthModal = {
       this.render();
     });
 
-    this.container.querySelector('#btn-go-config')?.addEventListener('click', () => {
-      this.activeTab = 'config';
-      this.render();
+    // Test Connection Manual Button
+    this.container.querySelector('#btn-test-connection-manual')?.addEventListener('click', async () => {
+      const errorDiv = this.container.querySelector('#auth-error-msg');
+      errorDiv.style.display = 'none';
+
+      const btn = this.container.querySelector('#btn-test-connection-manual');
+      btn.disabled = true;
+      btn.innerHTML = '🔄 Testando...';
+
+      const result = await SupabaseService.testConnection();
+      this.connectionStatus = { tested: true, ...result };
+      this.updateConnectionBadge();
+
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Testar Conexão';
+
+      if (result.ok) {
+        alert(`✔ Conexão com Supabase bem-sucedida! Latência: ${result.latency}ms`);
+      } else {
+        alert(`❌ Falha na conexão: ${result.message}`);
+      }
     });
 
     // Supabase Config Submit
@@ -276,6 +322,7 @@ export const AuthModal = {
 
         supabaseConfig.saveCredentials(url, key);
         await store.initAuth();
+        await this.checkConnection();
         this.activeTab = 'login';
         this.render();
       });
