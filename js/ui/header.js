@@ -1,11 +1,12 @@
 /**
  * @file header.js
  * App header controller with iOS Aqua aesthetics, Live Database Sync button, Supabase Auth,
- * and RBAC protection (admin governance completely invisible to members).
+ * and RBAC protection with canonical DOM sanitization.
  */
 
 import { DateUtils } from '../domain/models.js';
 import { store } from '../state/store.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 import { ActivityModal } from './activityModal.js';
 import { AuthModal } from './authModal.js';
 import { AdminGovernanceModal } from './adminGovernanceModal.js';
@@ -22,7 +23,7 @@ export const HeaderView = {
   },
 
   render(state) {
-    const { currentUser, userProfile, isAdmin, syncStatus, isSupabaseConnected, currentMonday, viewMode, theme } = state;
+    const { currentUser, userProfile, isAdmin, syncStatus, syncErrorMessage, isSupabaseConnected, currentMonday, viewMode, theme } = state;
     const weekRangeText = DateUtils.formatWeekRange(currentMonday);
 
     const themeIcons = {
@@ -37,16 +38,17 @@ export const HeaderView = {
     const syncLabel = isSyncing
       ? 'Sincronizando...'
       : isError
-        ? 'Erro ao sincronizar'
-        : 'Sincronizado';
+      ? (syncErrorMessage ? `Erro: ${syncErrorMessage}` : 'Erro ao sincronizar')
+      : 'Sincronizado';
 
     const syncDotColor = isSyncing
       ? 'var(--color-primary)'
       : isError
-        ? '#ef4444'
-        : '#10b981';
+      ? '#ef4444'
+      : '#10b981';
 
-    const userDisplayName = userProfile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Entrar';
+    const rawDisplayName = userProfile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Entrar';
+    const userDisplayName = Sanitizer.escape(rawDisplayName);
 
     const userInitial = currentUser
       ? userDisplayName.charAt(0).toUpperCase()
@@ -74,13 +76,12 @@ export const HeaderView = {
         <div class="week-nav aqua-pill">
           <button type="button" class="nav-btn today-btn" id="btn-nav-today">Hoje</button>
           <button type="button" class="nav-arrow-btn" id="btn-nav-prev" title="Semana anterior" aria-label="Semana anterior">‹</button>
-          <span class="current-range-display" id="week-range-text">${weekRangeText}</span>
+          <span class="current-range-display" id="week-range-text">${Sanitizer.escape(weekRangeText)}</span>
           <button type="button" class="nav-arrow-btn" id="btn-nav-next" title="Próxima semana" aria-label="Próxima semana">›</button>
         </div>
       </div>
 
       <div class="header-right">
-        <!-- Modular View Switcher (iOS Segmented Control) -->
         <div class="view-switcher aqua-pill">
           <button type="button" class="view-btn ${viewMode === 'week' ? 'active' : ''}" data-view="week" title="Quadro Semanal">
             <span>📅</span>
@@ -96,13 +97,11 @@ export const HeaderView = {
           </button>
         </div>
 
-        <!-- Live Database Sync Button -->
         <button type="button" class="sync-status-btn aqua-pill ${isSyncing ? 'is-syncing' : ''}" id="btn-sync-now" title="Clique para sincronizar com o Supabase sob demanda">
           <span class="sync-dot" style="background-color: ${syncDotColor};"></span>
-          <span class="sync-text">${isSyncing ? '🔄' : ''} ${syncLabel}</span>
+          <span class="sync-text">${isSyncing ? '🔄' : ''} ${Sanitizer.escape(syncLabel)}</span>
         </button>
 
-        <!-- Admin-Only Governance Button (Strictly hidden for members) -->
         ${isAdmin ? `
           <button type="button" class="governance-btn aqua-pill" id="btn-open-governance" title="Painel de Governança & Usuários (Admin Master)">
             <span>👑</span>
@@ -110,18 +109,15 @@ export const HeaderView = {
           </button>
         ` : ''}
 
-        <!-- User Profile & Auth Modal Trigger -->
-        <button type="button" class="user-selector-btn aqua-pill" id="btn-auth-profile" title="${currentUser ? 'Sua Conta: ' + currentUser.email : 'Entrar'}">
+        <button type="button" class="user-selector-btn aqua-pill" id="btn-auth-profile" title="${currentUser ? 'Sua Conta: ' + Sanitizer.escape(currentUser.email) : 'Entrar'}">
           <span class="user-avatar-badge">${userInitial}</span>
-          <span class="user-name-text">${this.escapeHtml(userDisplayName)}</span>
+          <span class="user-name-text">${userDisplayName}</span>
         </button>
 
-        <!-- Theme Toggle -->
-        <button type="button" class="theme-toggle-btn aqua-pill" id="btn-theme-toggle" title="Tema: ${theme}">
+        <button type="button" class="theme-toggle-btn aqua-pill" id="btn-theme-toggle" title="Tema: ${Sanitizer.escape(theme)}">
           ${themeIcons[theme] || '💻'}
         </button>
 
-        <!-- New Activity Primary Action -->
         <button type="button" class="btn-primary aqua-glow" id="btn-quick-add">
           <span>+</span>
           <span>Nova Atividade</span>
@@ -133,9 +129,9 @@ export const HeaderView = {
   },
 
   attachEvents(state) {
-    this.container.querySelector('#btn-nav-prev').addEventListener('click', () => store.prevWeek());
-    this.container.querySelector('#btn-nav-next').addEventListener('click', () => store.nextWeek());
-    this.container.querySelector('#btn-nav-today').addEventListener('click', () => store.goToToday());
+    this.container.querySelector('#btn-nav-prev')?.addEventListener('click', () => store.prevWeek());
+    this.container.querySelector('#btn-nav-next')?.addEventListener('click', () => store.nextWeek());
+    this.container.querySelector('#btn-nav-today')?.addEventListener('click', () => store.goToToday());
 
     this.container.querySelectorAll('.view-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -144,11 +140,10 @@ export const HeaderView = {
       });
     });
 
-    this.container.querySelector('#btn-sync-now').addEventListener('click', () => {
+    this.container.querySelector('#btn-sync-now')?.addEventListener('click', () => {
       store.syncNow();
     });
 
-    // Governance Button (Admin Only)
     const govBtn = this.container.querySelector('#btn-open-governance');
     if (govBtn) {
       govBtn.addEventListener('click', () => {
@@ -156,27 +151,17 @@ export const HeaderView = {
       });
     }
 
-    this.container.querySelector('#btn-auth-profile').addEventListener('click', () => {
+    this.container.querySelector('#btn-auth-profile')?.addEventListener('click', () => {
       AuthModal.open();
     });
 
-    this.container.querySelector('#btn-theme-toggle').addEventListener('click', () => {
+    this.container.querySelector('#btn-theme-toggle')?.addEventListener('click', () => {
       const nextTheme = state.theme === 'light' ? 'dark' : state.theme === 'dark' ? 'system' : 'light';
       store.setTheme(nextTheme);
     });
 
-    this.container.querySelector('#btn-quick-add').addEventListener('click', () => {
+    this.container.querySelector('#btn-quick-add')?.addEventListener('click', () => {
       ActivityModal.openNew(DateUtils.formatDateKey(new Date()));
     });
-  },
-
-  escapeHtml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
   }
 };

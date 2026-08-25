@@ -13,14 +13,12 @@ import { MealPlanView } from './ui/mealPlanView.js';
 import { ActivityModal } from './ui/activityModal.js';
 import { AuthModal } from './ui/authModal.js';
 import { AdminGovernanceModal } from './ui/adminGovernanceModal.js';
-import { UserModal } from './ui/userModal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Initialize modal dialogs
   ActivityModal.init();
   AuthModal.init();
   AdminGovernanceModal.init();
-  UserModal.init();
 
   // 2. Initialize Views
   HeaderView.init();
@@ -48,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. Global keyboard shortcuts for power users
   document.addEventListener('keydown', (e) => {
     const isEditing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
-    if (isEditing || ActivityModal.isOpen() || AuthModal.isOpen() || AdminGovernanceModal.isOpen() || UserModal.isOpen()) return;
+    if (isEditing || ActivityModal.isOpen() || AuthModal.isOpen() || AdminGovernanceModal.isOpen()) return;
 
     if (e.key === 'n' || e.key === 'N') {
       e.preventDefault();

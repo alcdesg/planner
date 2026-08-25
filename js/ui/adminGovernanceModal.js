@@ -1,11 +1,12 @@
 /**
  * @file adminGovernanceModal.js
  * Admin-only Governance & User Access Management Modal.
- * Completely hidden and inaccessible to non-admin (member) users.
+ * Completely protected by database RLS and canonical DOM sanitization.
  */
 
 import { store } from '../state/store.js';
 import { SupabaseService } from '../storage/supabaseService.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 export const AdminGovernanceModal = {
   container: null,
@@ -88,7 +89,7 @@ export const AdminGovernanceModal = {
         </div>
         <div class="modal-body" style="padding: 20px;">
           <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 12px; border-radius: var(--radius-sm); font-size: 0.85rem;">
-            Erro ao carregar dados: ${this.escapeHtml(msg)}
+            Erro ao carregar dados: ${Sanitizer.escape(msg)}
           </div>
         </div>
       </div>
@@ -114,7 +115,6 @@ export const AdminGovernanceModal = {
         </div>
 
         <div class="modal-body" style="max-height: 80vh;">
-          <!-- Metrics Banner -->
           <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px;">
             <div style="background: var(--bg-glass-card); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-glass-subtle); text-align: center;">
               <div style="font-size: 1.2rem; font-weight: 800; color: var(--color-primary);">${this.usersList.length}</div>
@@ -130,7 +130,6 @@ export const AdminGovernanceModal = {
             </div>
           </div>
 
-          <!-- Section: Users Table -->
           <div style="margin-top: 8px;">
             <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 6px;">
               Usuários Cadastrados no Banco
@@ -149,8 +148,8 @@ export const AdminGovernanceModal = {
                   ${this.usersList.map(u => `
                     <tr style="border-bottom: 1px solid var(--border-glass-subtle);">
                       <td style="padding: 8px 12px;">
-                        <div style="font-weight: 700; color: var(--text-primary);">${this.escapeHtml(u.name || 'Sem nome')}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">${this.escapeHtml(u.email)}</div>
+                        <div style="font-weight: 700; color: var(--text-primary);">${Sanitizer.escape(u.name || 'Sem nome')}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">${Sanitizer.escape(u.email)}</div>
                       </td>
                       <td style="padding: 8px 12px; text-align: center;">
                         <span style="font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-full); ${u.role === 'admin' ? 'background: rgba(245, 158, 11, 0.2); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.4);' : 'background: rgba(59, 130, 246, 0.15); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.3);'}">
@@ -167,7 +166,6 @@ export const AdminGovernanceModal = {
             </div>
           </div>
 
-          <!-- Section: Create New User Form -->
           <div style="margin-top: 16px; border-top: 1px dashed var(--border-glass-subtle); padding-top: 14px;">
             <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;">
               ➕ Criar e Provisionar Novo Usuário
@@ -179,7 +177,7 @@ export const AdminGovernanceModal = {
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label" for="new-user-name">Nome Completo *</label>
-                  <input type="text" id="new-user-name" class="form-input" placeholder="Ex: Roberto Silva" required />
+                  <input type="text" id="new-user-name" class="form-input" placeholder="Ex: Roberto Silva" maxlength="150" required />
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="new-user-role">Papel de Acesso</label>
@@ -193,7 +191,7 @@ export const AdminGovernanceModal = {
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label" for="new-user-email">E-mail de Acesso *</label>
-                  <input type="email" id="new-user-email" class="form-input" placeholder="roberto@planner.com.br" required />
+                  <input type="email" id="new-user-email" class="form-input" placeholder="roberto@planner.com.br" maxlength="255" required />
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="new-user-password">Senha Provisória *</label>
@@ -258,15 +256,5 @@ export const AdminGovernanceModal = {
         }
       });
     }
-  },
-
-  escapeHtml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
   }
 };

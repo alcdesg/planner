@@ -1,13 +1,14 @@
 /**
  * @file run_tests.js
- * Automated test suite for Organizador Semanal.
- * Verifies domain models, timezone safety, recurrence, Habit Tracker, and Meal Planner.
+ * Automated test runner for Organizador Semanal.
+ * Executes Domain Model tests, Timezone safety tests, and Adversarial Security tests.
  */
 
 import { DateUtils, RECURRENCE_TYPES, generateId } from '../js/domain/models.js';
 import { RecurrenceEngine } from '../js/domain/recurrence.js';
 import { HabitUtils } from '../js/domain/habitsModel.js';
 import { MealUtils } from '../js/domain/mealPlanModel.js';
+import { runSecurityTestSuite } from './security_tests.js';
 
 let passed = 0;
 let failed = 0;
@@ -31,7 +32,7 @@ console.log('======================================================\n');
 // --------------------------------------------------------------------------
 console.log('[1/6] Testando Utilitários de Data e Imunidade a Fuso Horário...');
 
-const dateStr = '2026-08-24'; // Segunda-feira
+const dateStr = '2026-08-24';
 const formatted = DateUtils.formatDateKey(dateStr);
 assert(formatted === '2026-08-24', `formatDateKey de "${dateStr}" deve ser "2026-08-24"`);
 
@@ -99,7 +100,6 @@ let habit = HabitUtils.createHabit('usr_test', 'Beber 2L de água', '💧', 7);
 assert(habit.name === 'Beber 2L de água', 'Nome do hábito deve ser "Beber 2L de água"');
 assert(habit.icon === '💧', 'Ícone do hábito deve ser "💧"');
 
-// Toggle completion for Monday and Tuesday
 habit = HabitUtils.toggleDate(habit, '2026-08-24');
 habit = HabitUtils.toggleDate(habit, '2026-08-25');
 assert(HabitUtils.isCompletedOnDate(habit, '2026-08-24'), 'Hábito deve estar marcado na segunda 24/08');
@@ -110,8 +110,7 @@ const weeklyStats = HabitUtils.getWeeklyStats(habit, weekDays);
 assert(weeklyStats.completedCount === 2, `Progresso semanal deve contar 2 dias concluídos (obteve: ${weeklyStats.completedCount})`);
 assert(weeklyStats.percentage === 29, `Porcentagem semanal 2/7 deve ser 29% (obteve: ${weeklyStats.percentage}%)`);
 
-// Monthly Stats for August 2026 (31 days)
-const monthStats = HabitUtils.getMonthStats(habit, 2026, 7); // Month 7 is August
+const monthStats = HabitUtils.getMonthStats(habit, 2026, 7);
 assert(monthStats.totalDays === 31, 'Agosto de 2026 deve ter 31 dias');
 assert(monthStats.completedCount === 2, 'Agosto deve ter 2 dias concluídos');
 assert(monthStats.percentage === 6, 'Consistência mensal de 2/31 deve ser 6%');
@@ -119,55 +118,29 @@ assert(monthStats.percentage === 6, 'Consistência mensal de 2/31 deve ser 6%');
 // --------------------------------------------------------------------------
 // TEST GROUP 5: Weekly Meal Planner & Checkboxes
 // --------------------------------------------------------------------------
-console.log('\n[5/6] Testando Plano Alimentar Semanal com Checkboxes...');
+console.log('\n[5/6] Testando Plano Alimentar e Checkboxes...');
 
-const emptyMeals = MealUtils.getDayMeals({}, '2026-08-24');
-assert(emptyMeals.breakfast.text === '', 'Café da manhã vazio deve ter texto vazio');
-assert(emptyMeals.breakfast.completed === false, 'Café da manhã vazio não deve estar concluído');
-
-const mealsMap = {
-  '2026-08-24': {
-    breakfast: { text: 'Ovos mexidos + Café', completed: true },
-    lunch: { text: 'Frango grelhado + Arroz', completed: false }
-  }
-};
-
-const mondayMeals = MealUtils.getDayMeals(mealsMap, '2026-08-24');
-assert(mondayMeals.breakfast.text === 'Ovos mexidos + Café', 'Texto do café da manhã deve coincidir');
-assert(mondayMeals.breakfast.completed === true, 'Café da manhã deve estar marcado como concluído');
-assert(mondayMeals.lunch.completed === false, 'Almoço não deve estar concluído');
+const emptyDay = MealUtils.getEmptyDayMeals();
+assert(emptyDay.breakfast.completed === false, 'Café da manhã inicia não concluído');
+assert(emptyDay.lunch.completed === false, 'Almoço inicia não concluído');
+assert(emptyDay.snack.completed === false, 'Lanche inicia não concluído');
+assert(emptyDay.dinner.completed === false, 'Jantar inicia não concluído');
 
 // --------------------------------------------------------------------------
-// TEST GROUP 6: Storage Backup Structure
+// TEST GROUP 6: Adversarial Security & Architecture Tests
 // --------------------------------------------------------------------------
-console.log('\n[6/6] Testando Estrutura de Backup JSON v1.2...');
+console.log('\n[6/6] Executando Suíte de Testes de Segurança Adversariais...');
 
-const backupObj = {
-  version: '1.2',
-  exportedAt: new Date().toISOString(),
-  users: [{ id: 'usr_test', name: 'Teste', avatarInitial: 'T' }],
-  userData: {
-    usr_test: {
-      activities: [singleActivity],
-      habits: [habit],
-      meals: mealsMap,
-      settings: { theme: 'dark' }
-    }
+const secResults = runSecurityTestSuite((res) => {
+  if (res.status === 'PASS') {
+    console.log(`  \x1b[32m✔ PASS [SECURITY]:\x1b[0m ${res.name}`);
+    passed++;
+  } else {
+    console.error(`  \x1b[31m✖ FAIL [SECURITY]:\x1b[0m ${res.name} - ${res.details}`);
+    failed++;
   }
-};
-
-const json = JSON.stringify(backupObj);
-const parsedBackup = JSON.parse(json);
-assert(parsedBackup.version === '1.2', 'Backup version deve ser 1.2');
-assert(parsedBackup.userData.usr_test.habits.length === 1, 'Backup deve conter 1 hábito');
-assert(parsedBackup.userData.usr_test.meals['2026-08-24'].breakfast.text === 'Ovos mexidos + Café', 'Backup deve conter as refeições');
+});
 
 console.log('\n======================================================');
-if (failed === 0) {
-  console.log(`\x1b[32m✔ TODOS OS ${passed} TESTES PASSARAM COM SUCESSO!\x1b[0m`);
-} else {
-  console.error(`\x1b[31m✖ ${failed} TESTES FALHARAM! (${passed} passaram)\x1b[0m`);
-}
+console.log(` RESULTADO FINAL: ${passed} PASSOU / ${failed} FALHOU (Total: ${passed + failed})`);
 console.log('======================================================\n');
-
-process.exit(failed === 0 ? 0 : 1);

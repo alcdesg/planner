@@ -1,12 +1,13 @@
 /**
  * @file todayView.js
  * Today Focused View controller.
- * Concentrated clean daily view aligned with the Weekly Board card stack philosophy.
+ * Concentrated clean daily view with attribute-safe DOM sanitization.
  */
 
 import { CATEGORIES, DateUtils, RECURRENCE_TYPES } from '../domain/models.js';
 import { RecurrenceEngine } from '../domain/recurrence.js';
 import { store } from '../state/store.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 import { ActivityModal } from './activityModal.js';
 
 export const TodayView = {
@@ -33,7 +34,6 @@ export const TodayView = {
     const { todayDate, activities } = state;
     const dateKey = DateUtils.formatDateKey(todayDate);
 
-    // Resolve occurrences for today
     const resolvedMap = RecurrenceEngine.resolveWeekActivities(activities, [todayDate]);
     const todayActivities = resolvedMap.get(dateKey) || [];
 
@@ -48,8 +48,8 @@ export const TodayView = {
       <div class="today-view-container">
         <div class="today-view-header">
           <div>
-            <h2 class="today-view-title">${capitalizedDayName}</h2>
-            <div class="today-view-subtitle">${formattedDate}</div>
+            <h2 class="today-view-title">${Sanitizer.escape(capitalizedDayName)}</h2>
+            <div class="today-view-subtitle">${Sanitizer.escape(formattedDate)}</div>
           </div>
           <div style="display: flex; align-items: center; gap: var(--space-sm);">
             ${totalCount > 0 ? `
@@ -85,25 +85,29 @@ export const TodayView = {
     const isCompleted = !!activity.isCompleted;
     const isRecurring = activity.recurrence && activity.recurrence !== RECURRENCE_TYPES.NONE;
 
+    const safeTitle = Sanitizer.escape(activity.title);
+    const safeId = Sanitizer.escape(activity.id);
+    const safeDateKey = Sanitizer.escape(dateKey);
+
     return `
-      <div class="activity-card ${isCompleted ? 'completed' : ''}" data-id="${activity.id}" data-occurrence-date="${dateKey}" tabindex="0" role="button" aria-label="${activity.title}">
+      <div class="activity-card ${isCompleted ? 'completed' : ''}" data-id="${safeId}" data-occurrence-date="${safeDateKey}" tabindex="0" role="button" aria-label="${safeTitle}">
         <div class="activity-card-header">
-          <button type="button" class="activity-check-btn" data-check-id="${activity.id}" data-occurrence-date="${dateKey}" title="${isCompleted ? 'Desmarcar' : 'Concluir'}">
+          <button type="button" class="activity-check-btn" data-check-id="${safeId}" data-occurrence-date="${safeDateKey}" title="${isCompleted ? 'Desmarcar' : 'Concluir'}">
             ${isCompleted ? '✓' : ''}
           </button>
-          <span class="activity-title">${this.escapeHtml(activity.title)}</span>
+          <span class="activity-title">${safeTitle}</span>
         </div>
 
         <div class="activity-meta">
-          <span class="category-badge category-${category.id}">
-            <span>${category.icon}</span>
-            <span>${category.label}</span>
+          <span class="category-badge category-${Sanitizer.escape(category.id)}">
+            <span>${Sanitizer.escape(category.icon)}</span>
+            <span>${Sanitizer.escape(category.label)}</span>
           </span>
 
           ${activity.time ? `
             <span class="time-badge">
               <span>🕒</span>
-              <span>${activity.time}</span>
+              <span>${Sanitizer.escape(activity.time)}</span>
             </span>
           ` : ''}
 
@@ -117,29 +121,13 @@ export const TodayView = {
     `;
   },
 
-  attachEvents(todayDateKey) {
-    const addBtn = this.container.querySelector('#btn-today-add');
-    if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        ActivityModal.openNew(todayDateKey);
-      });
-    }
+  attachEvents(dateKey) {
+    this.container.querySelector('#btn-today-add')?.addEventListener('click', () => {
+      ActivityModal.openNew(dateKey);
+    });
 
-    const emptyTrigger = this.container.querySelector('#today-empty-add-trigger');
-    if (emptyTrigger) {
-      emptyTrigger.addEventListener('click', () => {
-        ActivityModal.openNew(todayDateKey);
-      });
-    }
-
-    this.container.querySelectorAll('.activity-check-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        const id = e.currentTarget.dataset.checkId;
-        const occurrenceDate = e.currentTarget.dataset.occurrenceDate;
-        store.toggleActivityCompletion(id, occurrenceDate);
-      });
+    this.container.querySelector('#today-empty-add-trigger')?.addEventListener('click', () => {
+      ActivityModal.openNew(dateKey);
     });
 
     this.container.querySelectorAll('.activity-card').forEach(card => {
@@ -150,15 +138,14 @@ export const TodayView = {
         ActivityModal.openEdit(id, occurrenceDate);
       });
     });
-  },
 
-  escapeHtml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+    this.container.querySelectorAll('.activity-check-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.checkId;
+        const occurrenceDate = btn.dataset.occurrenceDate;
+        store.toggleActivityCompletion(id, occurrenceDate);
+      });
+    });
   }
 };

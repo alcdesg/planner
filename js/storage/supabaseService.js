@@ -1,10 +1,11 @@
 /**
  * @file supabaseService.js
- * Direct PostgreSQL backend data operations using Supabase with Row Level Security, RBAC and Health Checks.
+ * Direct PostgreSQL backend data operations using Supabase with Row Level Security, RBAC and Strict Health Checks.
+ * Zero client-side role determination - All authorization is enforced by the database.
  */
 
 import { supabaseConfig } from '../config/supabaseClient.js';
-import { StorageService } from './storage.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 export const SupabaseService = {
   /* ------------------------------------------------------------------------
@@ -84,26 +85,25 @@ export const SupabaseService = {
 
       if (data) return data;
 
-      // Auto-provision profile on first login if not created yet
+      // Safe auto-creation of base profile on first login (role defaults strictly to 'member')
       const currentUser = await this.getCurrentUser();
       if (currentUser && currentUser.id === userId) {
-        const isAdminUser = currentUser.email?.toLowerCase().startsWith('alcides');
-        const newProfile = {
+        const baseProfile = {
           id: userId,
           email: currentUser.email,
-          name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário',
-          role: isAdminUser ? 'admin' : (currentUser.user_metadata?.role || 'member'),
+          name: Sanitizer.clampText(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário', 150),
+          role: 'member', // Strictly member; elevation requires admin authorization in database
           theme: 'system'
         };
 
         const { data: inserted, error: insertErr } = await client
           .from('user_profiles')
-          .upsert(newProfile)
+          .upsert(baseProfile, { onConflict: 'id' })
           .select()
           .single();
 
         if (!insertErr && inserted) return inserted;
-        return newProfile;
+        return baseProfile;
       }
 
       return null;
@@ -124,7 +124,6 @@ export const SupabaseService = {
 
     if (error) throw error;
 
-    // Ensure user profile exists
     if (data.user) {
       await this.fetchUserProfile(data.user.id);
     }
@@ -149,7 +148,7 @@ export const SupabaseService = {
   },
 
   /* ------------------------------------------------------------------------
-     Admin Governance
+     Admin Governance (Enforced by Database RLS & is_admin())
      ------------------------------------------------------------------------ */
   async fetchAllProfiles() {
     const client = supabaseConfig.getClient();
@@ -157,11 +156,11 @@ export const SupabaseService = {
 
     const { data, error } = await client
       .from('user_profiles')
-      .select('*')
+      .select('id, email, name, role, is_active, created_at, updated_at')
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching all profiles (admin only):', error);
+      console.error('Error fetching all profiles:', error);
       throw error;
     }
     return data || [];
@@ -176,8 +175,8 @@ export const SupabaseService = {
       password: password.trim(),
       options: {
         data: {
-          name: name.trim(),
-          role: role || 'member'
+          name: Sanitizer.clampText(name, 150),
+          role: role === 'admin' ? 'admin' : 'member'
         }
       }
     });
@@ -188,8 +187,8 @@ export const SupabaseService = {
       await client.from('user_profiles').upsert({
         id: data.user.id,
         email: email.trim(),
-        name: name.trim(),
-        role: role || 'member',
+        name: Sanitizer.clampText(name, 150),
+        role: role === 'admin' ? 'admin' : 'member',
         theme: 'system'
       });
     }
@@ -198,11 +197,11 @@ export const SupabaseService = {
   },
 
   /* ------------------------------------------------------------------------
-     Activities DB Operations
+     Activities DB Operations (Strictly Bound to auth.uid())
      ------------------------------------------------------------------------ */
   async fetchActivities() {
     const client = supabaseConfig.getClient();
-    if (!client) return StorageService.getActivities(StorageService.getActiveUserId());
+    if (!client) return [];
 
     const { data, error } = await client
       .from('activities')
@@ -217,17 +216,17 @@ export const SupabaseService = {
     return (data || []).map(row => ({
       id: row.id,
       userId: row.user_id,
-      title: row.title,
+      title: Sanitizer.clampText(row.title, 255),
       date: row.date,
       time: row.time || '',
       category: row.category || 'outros',
       status: row.status || 'pending',
       recurrence: row.recurrence || 'none',
-      recurrenceDays: row.recurrence_days || [],
+      recurrenceDays: Array.isArray(row.recurrence_days) ? row.recurrence_days : [],
       recurrenceEndDate: row.recurrence_end_date || '',
-      completedDates: row.completed_dates || [],
-      overrides: row.overrides || {},
-      deletedDates: row.deleted_dates || [],
+      completedDates: Array.isArray(row.completed_dates) ? row.completed_dates : [],
+      overrides: typeof row.overrides === 'object' && row.overrides !== null ? row.overrides : {},
+      deletedDates: Array.isArray(row.deleted_dates) ? row.deleted_dates : [],
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
@@ -235,18 +234,18 @@ export const SupabaseService = {
 
   async insertActivity(activity) {
     const client = supabaseConfig.getClient();
-    if (!client) return activity;
+    if (!client) throw new Error('Supabase client offline.');
 
     const row = {
       id: activity.id,
-      title: activity.title,
+      title: Sanitizer.clampText(activity.title, 255),
       date: activity.date,
-      time: activity.time || '',
+      time: activity.time || null,
       category: activity.category || 'outros',
       status: activity.status || 'pending',
       recurrence: activity.recurrence || 'none',
       recurrence_days: activity.recurrenceDays || [],
-      recurrence_end_date: activity.recurrenceEndDate || '',
+      recurrence_end_date: activity.recurrenceEndDate || null,
       completed_dates: activity.completedDates || [],
       overrides: activity.overrides || {},
       deleted_dates: activity.deletedDates || []
@@ -267,17 +266,17 @@ export const SupabaseService = {
 
   async updateActivity(id, activity) {
     const client = supabaseConfig.getClient();
-    if (!client) return;
+    if (!client) throw new Error('Supabase client offline.');
 
     const updatePayload = {};
-    if (activity.title !== undefined) updatePayload.title = activity.title;
+    if (activity.title !== undefined) updatePayload.title = Sanitizer.clampText(activity.title, 255);
     if (activity.date !== undefined) updatePayload.date = activity.date;
-    if (activity.time !== undefined) updatePayload.time = activity.time;
+    if (activity.time !== undefined) updatePayload.time = activity.time || null;
     if (activity.category !== undefined) updatePayload.category = activity.category;
     if (activity.status !== undefined) updatePayload.status = activity.status;
     if (activity.recurrence !== undefined) updatePayload.recurrence = activity.recurrence;
     if (activity.recurrenceDays !== undefined) updatePayload.recurrence_days = activity.recurrenceDays;
-    if (activity.recurrenceEndDate !== undefined) updatePayload.recurrence_end_date = activity.recurrenceEndDate;
+    if (activity.recurrenceEndDate !== undefined) updatePayload.recurrence_end_date = activity.recurrenceEndDate || null;
     if (activity.completedDates !== undefined) updatePayload.completed_dates = activity.completedDates;
     if (activity.overrides !== undefined) updatePayload.overrides = activity.overrides;
     if (activity.deletedDates !== undefined) updatePayload.deleted_dates = activity.deletedDates;
@@ -296,7 +295,7 @@ export const SupabaseService = {
 
   async deleteActivity(id) {
     const client = supabaseConfig.getClient();
-    if (!client) return;
+    if (!client) throw new Error('Supabase client offline.');
 
     const { error } = await client
       .from('activities')
@@ -314,7 +313,7 @@ export const SupabaseService = {
      ------------------------------------------------------------------------ */
   async fetchHabits() {
     const client = supabaseConfig.getClient();
-    if (!client) return StorageService.getHabits(StorageService.getActiveUserId());
+    if (!client) return [];
 
     const { data, error } = await client
       .from('habits')
@@ -329,22 +328,22 @@ export const SupabaseService = {
     return (data || []).map(row => ({
       id: row.id,
       userId: row.user_id,
-      name: row.name,
+      name: Sanitizer.clampText(row.name, 150),
       icon: row.icon || '🎯',
       targetDays: row.target_days || 7,
-      completedDates: row.completed_dates || [],
+      completedDates: Array.isArray(row.completed_dates) ? row.completed_dates : [],
       createdAt: row.created_at
     }));
   },
 
   async insertHabit(habit) {
     const client = supabaseConfig.getClient();
-    if (!client) return habit;
+    if (!client) throw new Error('Supabase client offline.');
 
     const row = {
       id: habit.id,
-      name: habit.name,
-      icon: habit.icon,
+      name: Sanitizer.clampText(habit.name, 150),
+      icon: Sanitizer.clampText(habit.icon || '🎯', 10),
       target_days: habit.targetDays || 7,
       completed_dates: habit.completedDates || []
     };
@@ -364,11 +363,11 @@ export const SupabaseService = {
 
   async updateHabit(id, habit) {
     const client = supabaseConfig.getClient();
-    if (!client) return;
+    if (!client) throw new Error('Supabase client offline.');
 
     const updatePayload = {};
-    if (habit.name !== undefined) updatePayload.name = habit.name;
-    if (habit.icon !== undefined) updatePayload.icon = habit.icon;
+    if (habit.name !== undefined) updatePayload.name = Sanitizer.clampText(habit.name, 150);
+    if (habit.icon !== undefined) updatePayload.icon = Sanitizer.clampText(habit.icon, 10);
     if (habit.targetDays !== undefined) updatePayload.target_days = habit.targetDays;
     if (habit.completedDates !== undefined) updatePayload.completed_dates = habit.completedDates;
 
@@ -385,7 +384,7 @@ export const SupabaseService = {
 
   async deleteHabit(id) {
     const client = supabaseConfig.getClient();
-    if (!client) return;
+    if (!client) throw new Error('Supabase client offline.');
 
     const { error } = await client
       .from('habits')
@@ -399,11 +398,11 @@ export const SupabaseService = {
   },
 
   /* ------------------------------------------------------------------------
-     Meal Plans DB Operations
+     Meal Plans DB Operations (Unique per user_id, date_key)
      ------------------------------------------------------------------------ */
   async fetchMeals() {
     const client = supabaseConfig.getClient();
-    if (!client) return StorageService.getMeals(StorageService.getActiveUserId());
+    if (!client) return {};
 
     const { data, error } = await client
       .from('meal_plans')
@@ -428,10 +427,9 @@ export const SupabaseService = {
 
   async upsertMealDay(dateKey, dayData) {
     const client = supabaseConfig.getClient();
-    if (!client) return;
+    if (!client) throw new Error('Supabase client offline.');
 
     const row = {
-      id: `meal_${dateKey}`,
       date_key: dateKey,
       breakfast: dayData.breakfast || { text: '', completed: false },
       lunch:     dayData.lunch     || { text: '', completed: false },

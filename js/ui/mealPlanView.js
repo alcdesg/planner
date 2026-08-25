@@ -1,12 +1,13 @@
 /**
  * @file mealPlanView.js
  * Weekly Meal Planner View Controller.
- * 7-day grid with checkboxes for each meal (Breakfast, Lunch, Snack, Dinner) and quick week replication.
+ * 7-day grid with checkboxes for each meal, quick week replication, and canonical DOM sanitization.
  */
 
 import { DateUtils } from '../domain/models.js';
 import { MEAL_TYPES, MealUtils } from '../domain/mealPlanModel.js';
 import { store } from '../state/store.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 export const MealPlanView = {
   container: null,
@@ -39,18 +40,16 @@ export const MealPlanView = {
 
     this.container.innerHTML = `
       <div class="meals-view-container">
-        <!-- Meals Header -->
         <div class="meals-header">
           <div class="meals-header-left">
             <h2 class="meals-title">🥗 Plano Alimentar Semanal</h2>
-            <div class="meals-subtitle">Semana de ${DateUtils.formatWeekRange(currentMonday)}</div>
+            <div class="meals-subtitle">Semana de ${Sanitizer.escape(DateUtils.formatWeekRange(currentMonday))}</div>
           </div>
           <div style="font-size: 0.82rem; color: var(--text-muted);">
             Clique em qualquer refeição para editar ou marque o check conforme consumir.
           </div>
         </div>
 
-        <!-- 7 Columns Weekly Meals Board -->
         <div class="meals-grid">
           ${weekDays.map((day, idx) => {
             const dateKey = DateUtils.formatDateKey(day);
@@ -58,12 +57,14 @@ export const MealPlanView = {
             const shortName = DateUtils.dayNamesShort[idx];
             const dayNumber = day.getDate();
             const dayMeals = MealUtils.getDayMeals(meals, dateKey);
+            const safeDateKey = Sanitizer.escape(dateKey);
+            const safeShortName = Sanitizer.escape(shortName);
 
             return `
-              <div class="meal-day-column ${isToday ? 'today' : ''}" data-date="${dateKey}">
+              <div class="meal-day-column ${isToday ? 'today' : ''}" data-date="${safeDateKey}">
                 <div class="meal-day-header">
                   <div class="meal-day-meta">
-                    <span class="meal-day-name">${shortName}</span>
+                    <span class="meal-day-name">${safeShortName}</span>
                     <span class="meal-day-num">${dayNumber}</span>
                     ${isToday ? '<span class="today-indicator-pill">Hoje</span>' : ''}
                   </div>
@@ -73,28 +74,30 @@ export const MealPlanView = {
                   ${Object.values(MEAL_TYPES).map(type => {
                     const item = dayMeals[type.id] || { text: '', completed: false };
                     const hasText = !!item.text.trim();
+                    const safeTypeId = Sanitizer.escape(type.id);
+                    const safeText = Sanitizer.escape(item.text);
 
                     return `
-                      <div class="meal-card ${item.completed ? 'completed' : ''}" data-edit-meal="${type.id}" data-date="${dateKey}">
+                      <div class="meal-card ${item.completed ? 'completed' : ''}" data-edit-meal="${safeTypeId}" data-date="${safeDateKey}">
                         <div class="meal-card-top">
                           <button
                             type="button"
                             class="meal-check-btn ${item.completed ? 'checked' : ''}"
-                            data-toggle-meal="${type.id}"
-                            data-date="${dateKey}"
+                            data-toggle-meal="${safeTypeId}"
+                            data-date="${safeDateKey}"
                             title="${item.completed ? 'Desmarcar' : 'Marcar como consumido'}"
                           >
                             ${item.completed ? '✓' : ''}
                           </button>
 
                           <span class="meal-type-badge">
-                            <span>${type.icon}</span>
-                            <span>${type.label}</span>
+                            <span>${Sanitizer.escape(type.icon)}</span>
+                            <span>${Sanitizer.escape(type.label)}</span>
                           </span>
                         </div>
 
                         <div class="meal-text ${hasText ? '' : 'placeholder'}">
-                          ${hasText ? this.escapeHtml(item.text) : '+ Adicionar refeição'}
+                          ${hasText ? safeText : '+ Adicionar refeição'}
                         </div>
                       </div>
                     `;
@@ -111,7 +114,6 @@ export const MealPlanView = {
   },
 
   attachEvents() {
-    // Checkbox toggle
     this.container.querySelectorAll('[data-toggle-meal]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -121,7 +123,6 @@ export const MealPlanView = {
       });
     });
 
-    // Card click opens edit modal
     this.container.querySelectorAll('[data-edit-meal]').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.meal-check-btn')) return;
@@ -132,14 +133,24 @@ export const MealPlanView = {
     });
   },
 
-  /* ------------------------------------------------------------------------
-     Meal Modal
-     ------------------------------------------------------------------------ */
   initModal() {
     if (!this.modalContainer) return;
+
     this.modalContainer.addEventListener('click', (e) => {
-      if (e.target === this.modalContainer) this.closeModal();
+      if (e.target === this.modalContainer) {
+        this.closeModal();
+      }
     });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isModalOpen()) {
+        this.closeModal();
+      }
+    });
+  },
+
+  isModalOpen() {
+    return this.modalContainer && this.modalContainer.classList.contains('open');
   },
 
   openMealModal(dateKey, mealType) {
@@ -147,99 +158,108 @@ export const MealPlanView = {
     this.currentEditMealType = mealType;
 
     const state = store.getState();
-    const typeInfo = MEAL_TYPES[mealType] || MEAL_TYPES.lunch;
     const dayMeals = MealUtils.getDayMeals(state.meals, dateKey);
-    const currentText = dayMeals[mealType]?.text || '';
+    const meal = dayMeals[mealType] || { text: '', completed: false };
+    const typeDef = MEAL_TYPES[mealType] || { label: 'Refeição', icon: '🍽️' };
+
+    const parsedDate = DateUtils.parseDateKey(dateKey);
+    const formattedDate = parsedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
     this.modalContainer.innerHTML = `
-      <div class="modal-dialog" role="dialog" aria-modal="true" style="max-width: 440px;">
+      <div class="modal-dialog aqua-glass" role="dialog" aria-modal="true" style="max-width: 460px;">
         <div class="modal-header">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 1.3rem;">${typeInfo.icon}</span>
+            <span style="font-size: 1.2rem;">${Sanitizer.escape(typeDef.icon)}</span>
             <div>
-              <h2 class="modal-title">${typeInfo.label}</h2>
-              <span class="modal-subtitle">${DateUtils.formatDateKey(dateKey)}</span>
+              <h2 class="modal-title">${Sanitizer.escape(typeDef.label)}</h2>
+              <span class="modal-subtitle">${Sanitizer.escape(formattedDate)}</span>
             </div>
           </div>
           <button type="button" class="modal-close-btn" id="meal-modal-close">&times;</button>
         </div>
 
-        <form id="meal-form">
+        <form id="meal-edit-form">
           <div class="modal-body">
             <div class="form-group">
-              <label class="form-label" for="meal-menu-input">Cardápio / Alimentos planejados</label>
+              <label class="form-label" for="meal-text-input">O que você planeja comer nesta refeição?</label>
               <textarea
-                id="meal-menu-input"
+                id="meal-text-input"
                 class="form-input"
-                rows="3"
-                placeholder="Ex: Frango grelhado com arroz integral e salada de folhas..."
-                style="resize: vertical;"
-              >${this.escapeHtml(currentText)}</textarea>
+                rows="4"
+                placeholder="Ex: Ovos mexidos com torradas integrais e café com leite desnatado..."
+                maxlength="255"
+                style="resize: vertical; font-size: 0.9rem;"
+              >${Sanitizer.escape(meal.text || '')}</textarea>
             </div>
 
-            <div style="border-top: 1px dashed var(--border-default); padding-top: 10px; margin-top: 4px;">
-              <button type="button" class="btn-secondary" id="btn-replicate-week" style="width: 100%; justify-content: center; font-size: 0.82rem;">
+            <div style="background: var(--bg-glass-pill); border-radius: var(--radius-md); padding: 10px; border: 1px solid var(--border-glass-subtle); margin-top: 4px;">
+              <div style="font-size: 0.76rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">
+                ⚡ Ações Rápidas de Planejamento:
+              </div>
+              <button type="button" class="btn-secondary" id="btn-replicate-meal" style="width: 100%; justify-content: center; font-size: 0.8rem; padding: 6px 12px;">
                 🔁 Replicar este cardápio para toda a semana
               </button>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="btn-meal-cancel">Cancelar</button>
-            <button type="submit" class="btn-primary">Salvar Cardápio</button>
+            <button type="button" class="btn-danger" id="btn-clear-meal">Limpar Refeição</button>
+            <div style="display: flex; gap: var(--space-xs);">
+              <button type="button" class="btn-secondary" id="btn-cancel-meal">Cancelar</button>
+              <button type="submit" class="btn-primary">Salvar</button>
+            </div>
           </div>
         </form>
       </div>
     `;
 
+    this.attachModalEvents();
     this.modalContainer.classList.add('open');
-
-    this.modalContainer.querySelector('#meal-modal-close').addEventListener('click', () => this.closeModal());
-    this.modalContainer.querySelector('#btn-meal-cancel').addEventListener('click', () => this.closeModal());
-
-    const textarea = this.modalContainer.querySelector('#meal-menu-input');
-
-    // Replicate to entire week button
-    this.modalContainer.querySelector('#btn-replicate-week').addEventListener('click', () => {
-      const text = textarea.value;
-      if (!text.trim()) {
-        alert('Digite os alimentos da refeição antes de replicar.');
-        return;
-      }
-      if (confirm(`Deseja definir "${text}" no ${typeInfo.label} de todos os 7 dias desta semana?`)) {
-        store.replicateMealToWeek(mealType, text, store.getState().weekDays);
-        this.closeModal();
-      }
-    });
-
-    const form = this.modalContainer.querySelector('#meal-form');
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = textarea.value;
-      store.updateMeal(this.currentEditDateKey, this.currentEditMealType, text);
-      this.closeModal();
-    });
-
     setTimeout(() => {
-      if (textarea) textarea.focus();
+      this.modalContainer.querySelector('#meal-text-input')?.focus();
     }, 50);
   },
 
   closeModal() {
     if (this.modalContainer) {
       this.modalContainer.classList.remove('open');
+      this.currentEditDateKey = null;
+      this.currentEditMealType = null;
     }
-    this.currentEditDateKey = null;
-    this.currentEditMealType = null;
   },
 
-  escapeHtml(str) {
-    if (!str) return '';
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+  attachModalEvents() {
+    this.modalContainer.querySelector('#meal-modal-close')?.addEventListener('click', () => this.closeModal());
+    this.modalContainer.querySelector('#btn-cancel-meal')?.addEventListener('click', () => this.closeModal());
+
+    this.modalContainer.querySelector('#btn-clear-meal')?.addEventListener('click', () => {
+      if (this.currentEditDateKey && this.currentEditMealType) {
+        store.updateMeal(this.currentEditDateKey, this.currentEditMealType, '');
+        this.closeModal();
+      }
+    });
+
+    this.modalContainer.querySelector('#btn-replicate-meal')?.addEventListener('click', () => {
+      const text = this.modalContainer.querySelector('#meal-text-input').value;
+      if (!text.trim()) {
+        alert('Digite uma descrição para a refeição antes de replicar.');
+        return;
+      }
+      const state = store.getState();
+      if (confirm(`Deseja aplicar esta refeição para todos os dias desta semana (${DateUtils.formatWeekRange(state.currentMonday)})?`)) {
+        store.replicateMealToWeek(this.currentEditMealType, text, state.weekDays);
+        this.closeModal();
+      }
+    });
+
+    const form = this.modalContainer.querySelector('#meal-edit-form');
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = this.modalContainer.querySelector('#meal-text-input').value;
+      if (this.currentEditDateKey && this.currentEditMealType) {
+        store.updateMeal(this.currentEditDateKey, this.currentEditMealType, text);
+        this.closeModal();
+      }
+    });
   }
 };

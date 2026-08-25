@@ -2,6 +2,7 @@
  * @file store.js
  * Central reactive application state manager.
  * Supports direct PostgreSQL Supabase synchronization, RBAC roles (Admin/Member), Habits & Meals.
+ * Enforces session memory hygiene and transparent error states.
  */
 
 import { generateId, DateUtils, RECURRENCE_TYPES, ACTIVITY_STATUS } from '../domain/models.js';
@@ -9,7 +10,7 @@ import { HabitUtils } from '../domain/habitsModel.js';
 import { MealUtils } from '../domain/mealPlanModel.js';
 import { supabaseConfig } from '../config/supabaseClient.js';
 import { SupabaseService } from '../storage/supabaseService.js';
-import { StorageService } from '../storage/storage.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 class AppStore {
   constructor() {
@@ -18,14 +19,15 @@ class AppStore {
     // 1. Session & Auth State
     this.session = null;
     this.currentUser = null;
-    this.userProfile = null; // { id, email, name, role: 'admin' | 'member' }
+    this.userProfile = null;
     this.syncStatus = 'synced'; // 'synced' | 'syncing' | 'error'
+    this.syncErrorMessage = '';
 
     // 2. Navigation state
     const today = new Date();
     this.currentMonday = DateUtils.getMondayOfWeek(today);
     this.todayDate = today;
-    this.viewMode = 'week'; // 'week' | 'habits' | 'meals'
+    this.viewMode = 'week';
 
     this.habitViewMode = 'week';
     this.habitMonthDate = new Date(today.getFullYear(), today.getMonth(), 1, 12, 0, 0);
@@ -36,13 +38,28 @@ class AppStore {
     // 3. Theme
     this.theme = 'system';
 
-    // 4. Data lists (loaded from Supabase / fallback)
+    // 4. Data lists (strictly isolated per user)
     this.activities = [];
     this.habits = [];
     this.meals = {};
 
     this.initAuth();
     this.applyTheme(this.theme);
+  }
+
+  /**
+   * Reset all in-memory data arrays to prevent memory leakage across sessions.
+   */
+  resetState() {
+    this.session = null;
+    this.currentUser = null;
+    this.userProfile = null;
+    this.activities = [];
+    this.habits = [];
+    this.meals = {};
+    this.syncStatus = 'synced';
+    this.syncErrorMessage = '';
+    this.notify();
   }
 
   async initAuth() {
@@ -52,28 +69,34 @@ class AppStore {
         this.currentUser = this.session?.user || null;
         if (this.currentUser) {
           this.userProfile = await SupabaseService.fetchUserProfile(this.currentUser.id);
+        } else {
+          this.resetState();
         }
 
         SupabaseService.onAuthStateChange(async (event, session) => {
-          this.session = session;
-          this.currentUser = session?.user || null;
-          if (this.currentUser) {
-            this.userProfile = await SupabaseService.fetchUserProfile(this.currentUser.id);
+          if (event === 'SIGNED_OUT' || !session) {
+            this.resetState();
           } else {
-            this.userProfile = null;
+            this.session = session;
+            this.currentUser = session?.user || null;
+            if (this.currentUser) {
+              this.userProfile = await SupabaseService.fetchUserProfile(this.currentUser.id);
+            }
+            await this.syncNow();
           }
-          await this.syncNow();
         });
       } catch (e) {
         console.warn('Auth init warning:', e);
       }
     }
 
-    await this.syncNow();
+    if (this.currentUser) {
+      await this.syncNow();
+    }
   }
 
   isAdmin() {
-    return this.userProfile?.role === 'admin';
+    return this.userProfile?.role === 'admin' && this.userProfile?.is_active === true;
   }
 
   isAuthenticated() {
@@ -101,6 +124,7 @@ class AppStore {
       isAdmin: this.isAdmin(),
       isAuthenticated: this.isAuthenticated(),
       syncStatus: this.syncStatus,
+      syncErrorMessage: this.syncErrorMessage,
       isSupabaseConnected: supabaseConfig.isConfigured(),
       currentMonday: this.currentMonday,
       todayDate: this.todayDate,
@@ -117,36 +141,37 @@ class AppStore {
   }
 
   /* ------------------------------------------------------------------------
-     Sync & Direct Database Operations
+     Direct Database Sychronization
      ------------------------------------------------------------------------ */
   async syncNow() {
+    if (!this.currentUser) {
+      this.resetState();
+      return;
+    }
+
     this.syncStatus = 'syncing';
+    this.syncErrorMessage = '';
     this.notify();
 
     try {
-      if (supabaseConfig.isConfigured() && this.currentUser) {
-        // Direct fetch from Supabase
+      if (supabaseConfig.isConfigured()) {
         const [activities, habits, meals, profile] = await Promise.all([
           SupabaseService.fetchActivities(),
           SupabaseService.fetchHabits(),
           SupabaseService.fetchMeals(),
           SupabaseService.fetchUserProfile(this.currentUser.id)
         ]);
+
         this.activities = activities;
         this.habits = habits;
         this.meals = meals;
         if (profile) this.userProfile = profile;
-      } else {
-        // Fallback local storage
-        const activeUserId = StorageService.getActiveUserId();
-        this.activities = StorageService.getActivities(activeUserId);
-        this.habits = StorageService.getHabits(activeUserId);
-        this.meals = StorageService.getMeals(activeUserId);
+        this.syncStatus = 'synced';
       }
-      this.syncStatus = 'synced';
     } catch (e) {
       console.error('Sync failed:', e);
       this.syncStatus = 'error';
+      this.syncErrorMessage = e.message || 'Falha na sincronização';
     }
 
     this.notify();
@@ -156,6 +181,7 @@ class AppStore {
      Theme Actions
      ------------------------------------------------------------------------ */
   setTheme(theme) {
+    if (!['system', 'light', 'dark'].includes(theme)) theme = 'system';
     this.theme = theme;
     this.applyTheme(theme);
     this.notify();
@@ -202,13 +228,15 @@ class AppStore {
   }
 
   /* ------------------------------------------------------------------------
-     Activity Actions (Direct to Database)
+     Activity Actions
      ------------------------------------------------------------------------ */
   async addActivity(data) {
+    if (!this.currentUser) return null;
+
     const newActivity = {
       id: generateId(),
-      userId: this.currentUser?.id || 'usr_default',
-      title: data.title.trim(),
+      userId: this.currentUser.id,
+      title: Sanitizer.clampText(data.title, 255),
       date: data.date,
       time: data.time || '',
       category: data.category || 'outros',
@@ -226,20 +254,21 @@ class AppStore {
     this.activities = [...this.activities, newActivity];
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser) {
-      try {
-        await SupabaseService.insertActivity(newActivity);
-      } catch (e) {
-        console.error('Error saving activity:', e);
-      }
-    } else {
-      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
+    try {
+      await SupabaseService.insertActivity(newActivity);
+    } catch (e) {
+      console.error('Error saving activity:', e);
+      this.syncStatus = 'error';
+      this.syncErrorMessage = e.message;
+      this.notify();
     }
 
     return newActivity;
   }
 
   async updateActivity(id, data, scope = 'all', occurrenceDate = null) {
+    if (!this.currentUser) return;
+
     let updatedTarget = null;
 
     this.activities = this.activities.map(act => {
@@ -248,7 +277,7 @@ class AppStore {
       if (scope === 'this' && occurrenceDate && act.recurrence && act.recurrence !== RECURRENCE_TYPES.NONE) {
         const overrides = act.overrides || {};
         overrides[occurrenceDate] = {
-          title: (data.title || act.title).trim(),
+          title: Sanitizer.clampText(data.title || act.title, 255),
           time: data.time !== undefined ? data.time : act.time,
           category: data.category || act.category
         };
@@ -264,7 +293,7 @@ class AppStore {
       updatedTarget = {
         ...act,
         ...data,
-        title: (data.title || act.title).trim(),
+        title: Sanitizer.clampText(data.title || act.title, 255),
         updatedAt: new Date().toISOString()
       };
       return updatedTarget;
@@ -272,18 +301,21 @@ class AppStore {
 
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
+    if (updatedTarget) {
       try {
         await SupabaseService.updateActivity(id, updatedTarget);
       } catch (e) {
         console.error('Error updating activity in Supabase:', e);
+        this.syncStatus = 'error';
+        this.syncErrorMessage = e.message;
+        this.notify();
       }
-    } else {
-      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
     }
   }
 
   async deleteActivity(id, scope = 'all', occurrenceDate = null) {
+    if (!this.currentUser) return;
+
     let updatedTarget = null;
 
     if (scope === 'this' && occurrenceDate) {
@@ -307,24 +339,28 @@ class AppStore {
 
       this.notify();
 
-      if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
-        await SupabaseService.updateActivity(id, updatedTarget);
+      if (updatedTarget) {
+        try {
+          await SupabaseService.updateActivity(id, updatedTarget);
+        } catch (e) {
+          console.error('Error updating activity:', e);
+        }
       }
     } else {
       this.activities = this.activities.filter(act => act.id !== id);
       this.notify();
 
-      if (supabaseConfig.isConfigured() && this.currentUser) {
+      try {
         await SupabaseService.deleteActivity(id);
+      } catch (e) {
+        console.error('Error deleting activity:', e);
       }
-    }
-
-    if (!supabaseConfig.isConfigured() || !this.currentUser) {
-      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
     }
   }
 
   async toggleActivityCompletion(id, occurrenceDate) {
+    if (!this.currentUser) return;
+
     let updatedTarget = null;
 
     this.activities = this.activities.map(act => {
@@ -359,15 +395,17 @@ class AppStore {
 
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
-      await SupabaseService.updateActivity(id, updatedTarget);
-    } else {
-      StorageService.saveActivities(StorageService.getActiveUserId(), this.activities);
+    if (updatedTarget) {
+      try {
+        await SupabaseService.updateActivity(id, updatedTarget);
+      } catch (e) {
+        console.error('Error updating activity:', e);
+      }
     }
   }
 
   /* ------------------------------------------------------------------------
-     Habits Actions (Direct to Database)
+     Habits Actions
      ------------------------------------------------------------------------ */
   setHabitViewMode(mode) {
     this.habitViewMode = mode;
@@ -389,32 +427,36 @@ class AppStore {
   }
 
   async addHabit(data) {
+    if (!this.currentUser) return null;
+
     const newHabit = HabitUtils.createHabit(
-      this.currentUser?.id || 'usr_default',
-      data.name,
-      data.icon,
+      this.currentUser.id,
+      Sanitizer.clampText(data.name, 150),
+      Sanitizer.clampText(data.icon || '🎯', 10),
       data.targetDays || 7
     );
 
     this.habits = [...this.habits, newHabit];
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser) {
+    try {
       await SupabaseService.insertHabit(newHabit);
-    } else {
-      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    } catch (e) {
+      console.error('Error adding habit:', e);
     }
     return newHabit;
   }
 
   async updateHabit(id, data) {
+    if (!this.currentUser) return;
+
     let updatedTarget = null;
     this.habits = this.habits.map(h => {
       if (h.id === id) {
         updatedTarget = {
           ...h,
-          name: (data.name || h.name).trim(),
-          icon: data.icon || h.icon,
+          name: Sanitizer.clampText(data.name || h.name, 150),
+          icon: Sanitizer.clampText(data.icon || h.icon, 10),
           targetDays: data.targetDays !== undefined ? data.targetDays : h.targetDays
         };
         return updatedTarget;
@@ -423,25 +465,31 @@ class AppStore {
     });
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
-      await SupabaseService.updateHabit(id, updatedTarget);
-    } else {
-      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    if (updatedTarget) {
+      try {
+        await SupabaseService.updateHabit(id, updatedTarget);
+      } catch (e) {
+        console.error('Error updating habit in Supabase:', e);
+      }
     }
   }
 
   async deleteHabit(id) {
+    if (!this.currentUser) return;
+
     this.habits = this.habits.filter(h => h.id !== id);
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser) {
+    try {
       await SupabaseService.deleteHabit(id);
-    } else {
-      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    } catch (e) {
+      console.error('Error deleting habit from Supabase:', e);
     }
   }
 
   async toggleHabitDate(id, dateKey) {
+    if (!this.currentUser) return;
+
     let updatedTarget = null;
     this.habits = this.habits.map(h => {
       if (h.id === id) {
@@ -452,22 +500,26 @@ class AppStore {
     });
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser && updatedTarget) {
-      await SupabaseService.updateHabit(id, updatedTarget);
-    } else {
-      StorageService.saveHabits(StorageService.getActiveUserId(), this.habits);
+    if (updatedTarget) {
+      try {
+        await SupabaseService.updateHabit(id, updatedTarget);
+      } catch (e) {
+        console.error('Error toggling habit date:', e);
+      }
     }
   }
 
   /* ------------------------------------------------------------------------
-     Meal Plan Actions (Direct to Database)
+     Meal Plan Actions
      ------------------------------------------------------------------------ */
   async updateMeal(dateKey, mealType, text) {
+    if (!this.currentUser) return;
+
     const currentDay = this.meals[dateKey] || MealUtils.getEmptyDayMeals();
     const updatedDay = {
       ...currentDay,
       [mealType]: {
-        text: text.trim(),
+        text: Sanitizer.clampText(text, 255),
         completed: currentDay[mealType]?.completed || false
       }
     };
@@ -478,14 +530,16 @@ class AppStore {
     };
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser) {
+    try {
       await SupabaseService.upsertMealDay(dateKey, updatedDay);
-    } else {
-      StorageService.saveMeals(StorageService.getActiveUserId(), this.meals);
+    } catch (e) {
+      console.error('Error saving meal to Supabase:', e);
     }
   }
 
   async toggleMealComplete(dateKey, mealType) {
+    if (!this.currentUser) return;
+
     const currentDay = this.meals[dateKey] || MealUtils.getEmptyDayMeals();
     const currentMeal = currentDay[mealType] || { text: '', completed: false };
 
@@ -503,14 +557,16 @@ class AppStore {
     };
     this.notify();
 
-    if (supabaseConfig.isConfigured() && this.currentUser) {
+    try {
       await SupabaseService.upsertMealDay(dateKey, updatedDay);
-    } else {
-      StorageService.saveMeals(StorageService.getActiveUserId(), this.meals);
+    } catch (e) {
+      console.error('Error toggling meal completion:', e);
     }
   }
 
   async replicateMealToWeek(mealType, text, weekDays) {
+    if (!this.currentUser) return;
+
     const updatedMeals = { ...this.meals };
     const updatePromises = [];
 
@@ -520,24 +576,21 @@ class AppStore {
       const newDayMeals = {
         ...dayMeals,
         [mealType]: {
-          text: text.trim(),
+          text: Sanitizer.clampText(text, 255),
           completed: false
         }
       };
       updatedMeals[key] = newDayMeals;
-
-      if (supabaseConfig.isConfigured() && this.currentUser) {
-        updatePromises.push(SupabaseService.upsertMealDay(key, newDayMeals));
-      }
+      updatePromises.push(SupabaseService.upsertMealDay(key, newDayMeals));
     });
 
     this.meals = updatedMeals;
     this.notify();
 
-    if (updatePromises.length > 0) {
+    try {
       await Promise.all(updatePromises);
-    } else {
-      StorageService.saveMeals(StorageService.getActiveUserId(), this.meals);
+    } catch (e) {
+      console.error('Error replicating meals:', e);
     }
   }
 }
