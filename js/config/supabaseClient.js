@@ -1,12 +1,11 @@
 /**
  * @file supabaseClient.js
- * Supabase client initializer and credentials manager.
- * Imports @supabase/supabase-js via native ESM CDN.
+ * Supabase client initializer with project URL preset and credentials manager.
  */
 
-// Native ESM import for Supabase JS client v2
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
+const DEFAULT_PROJECT_URL = 'https://txumkevqlgjdyqqlmxlh.supabase.co';
 const CONFIG_KEY_URL = 'organizador:supabase:url';
 const CONFIG_KEY_ANON = 'organizador:supabase:anon_key';
 
@@ -17,7 +16,7 @@ class SupabaseConfig {
   }
 
   getUrl() {
-    return localStorage.getItem(CONFIG_KEY_URL) || window.SUPABASE_URL || '';
+    return localStorage.getItem(CONFIG_KEY_URL) || DEFAULT_PROJECT_URL;
   }
 
   getAnonKey() {

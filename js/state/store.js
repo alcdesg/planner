@@ -1,7 +1,7 @@
 /**
  * @file store.js
  * Central reactive application state manager.
- * Supports direct PostgreSQL Supabase synchronization, Auth session, Habits & Meals.
+ * Supports direct PostgreSQL Supabase synchronization, RBAC roles (Admin/Member), Habits & Meals.
  */
 
 import { generateId, DateUtils, RECURRENCE_TYPES, ACTIVITY_STATUS } from '../domain/models.js';
@@ -18,6 +18,7 @@ class AppStore {
     // 1. Session & Auth State
     this.session = null;
     this.currentUser = null;
+    this.userProfile = null; // { id, email, name, role: 'admin' | 'member' }
     this.syncStatus = 'synced'; // 'synced' | 'syncing' | 'error'
 
     // 2. Navigation state
@@ -49,10 +50,18 @@ class AppStore {
       try {
         this.session = await SupabaseService.getCurrentSession();
         this.currentUser = this.session?.user || null;
+        if (this.currentUser) {
+          this.userProfile = await SupabaseService.fetchUserProfile(this.currentUser.id);
+        }
 
         SupabaseService.onAuthStateChange(async (event, session) => {
           this.session = session;
           this.currentUser = session?.user || null;
+          if (this.currentUser) {
+            this.userProfile = await SupabaseService.fetchUserProfile(this.currentUser.id);
+          } else {
+            this.userProfile = null;
+          }
           await this.syncNow();
         });
       } catch (e) {
@@ -61,6 +70,14 @@ class AppStore {
     }
 
     await this.syncNow();
+  }
+
+  isAdmin() {
+    return this.userProfile?.role === 'admin';
+  }
+
+  isAuthenticated() {
+    return !!this.currentUser;
   }
 
   subscribe(listener) {
@@ -80,6 +97,9 @@ class AppStore {
     return {
       session: this.session,
       currentUser: this.currentUser,
+      userProfile: this.userProfile,
+      isAdmin: this.isAdmin(),
+      isAuthenticated: this.isAuthenticated(),
       syncStatus: this.syncStatus,
       isSupabaseConnected: supabaseConfig.isConfigured(),
       currentMonday: this.currentMonday,
@@ -106,14 +126,16 @@ class AppStore {
     try {
       if (supabaseConfig.isConfigured() && this.currentUser) {
         // Direct fetch from Supabase
-        const [activities, habits, meals] = await Promise.all([
+        const [activities, habits, meals, profile] = await Promise.all([
           SupabaseService.fetchActivities(),
           SupabaseService.fetchHabits(),
-          SupabaseService.fetchMeals()
+          SupabaseService.fetchMeals(),
+          SupabaseService.fetchUserProfile(this.currentUser.id)
         ]);
         this.activities = activities;
         this.habits = habits;
         this.meals = meals;
+        if (profile) this.userProfile = profile;
       } else {
         // Fallback local storage
         const activeUserId = StorageService.getActiveUserId();
@@ -201,7 +223,6 @@ class AppStore {
       updatedAt: new Date().toISOString()
     };
 
-    // Optimistic UI update
     this.activities = [...this.activities, newActivity];
     this.notify();
 

@@ -1,13 +1,14 @@
 /**
  * @file header.js
- * App header controller with iOS Aqua aesthetics, Live Database Sync button, and Supabase Auth.
+ * App header controller with iOS Aqua aesthetics, Live Database Sync button, Supabase Auth,
+ * and RBAC protection (admin governance completely invisible to members).
  */
 
 import { DateUtils } from '../domain/models.js';
 import { store } from '../state/store.js';
 import { ActivityModal } from './activityModal.js';
 import { AuthModal } from './authModal.js';
-import { UserModal } from './userModal.js';
+import { AdminGovernanceModal } from './adminGovernanceModal.js';
 
 export const HeaderView = {
   container: null,
@@ -21,7 +22,7 @@ export const HeaderView = {
   },
 
   render(state) {
-    const { currentUser, syncStatus, isSupabaseConnected, currentMonday, viewMode, theme } = state;
+    const { currentUser, userProfile, isAdmin, syncStatus, isSupabaseConnected, currentMonday, viewMode, theme } = state;
     const weekRangeText = DateUtils.formatWeekRange(currentMonday);
 
     const themeIcons = {
@@ -36,18 +37,16 @@ export const HeaderView = {
     const syncLabel = isSyncing
       ? 'Sincronizando...'
       : isError
-      ? 'Erro ao sincronizar'
-      : 'Sincronizado';
+        ? 'Erro ao sincronizar'
+        : 'Sincronizado';
 
     const syncDotColor = isSyncing
       ? 'var(--color-primary)'
       : isError
-      ? '#ef4444'
-      : '#10b981';
+        ? '#ef4444'
+        : '#10b981';
 
-    const userDisplayName = currentUser
-      ? (currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário')
-      : 'Entrar';
+    const userDisplayName = userProfile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split('@')[0] || 'Entrar';
 
     const userInitial = currentUser
       ? userDisplayName.charAt(0).toUpperCase()
@@ -64,7 +63,12 @@ export const HeaderView = {
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
           </div>
-          <span class="app-title">Organizador</span>
+          <div style="display: flex; align-items: baseline; gap: 6px;">
+            <span class="app-title">Organizador</span>
+            ${isAdmin ? `
+              <span class="admin-role-badge" title="Usuário Administrador Master">👑 Admin</span>
+            ` : ''}
+          </div>
         </div>
 
         <div class="week-nav aqua-pill">
@@ -98,8 +102,16 @@ export const HeaderView = {
           <span class="sync-text">${isSyncing ? '🔄' : ''} ${syncLabel}</span>
         </button>
 
+        <!-- Admin-Only Governance Button (Strictly hidden for members) -->
+        ${isAdmin ? `
+          <button type="button" class="governance-btn aqua-pill" id="btn-open-governance" title="Painel de Governança & Usuários (Admin Master)">
+            <span>👑</span>
+            <span>Governança</span>
+          </button>
+        ` : ''}
+
         <!-- User Profile & Auth Modal Trigger -->
-        <button type="button" class="user-selector-btn aqua-pill" id="btn-auth-profile" title="${currentUser ? 'Sua Conta: ' + currentUser.email : 'Entrar / Conectar Supabase'}">
+        <button type="button" class="user-selector-btn aqua-pill" id="btn-auth-profile" title="${currentUser ? 'Sua Conta: ' + currentUser.email : 'Entrar'}">
           <span class="user-avatar-badge">${userInitial}</span>
           <span class="user-name-text">${this.escapeHtml(userDisplayName)}</span>
         </button>
@@ -121,12 +133,10 @@ export const HeaderView = {
   },
 
   attachEvents(state) {
-    // Navigation
     this.container.querySelector('#btn-nav-prev').addEventListener('click', () => store.prevWeek());
     this.container.querySelector('#btn-nav-next').addEventListener('click', () => store.nextWeek());
     this.container.querySelector('#btn-nav-today').addEventListener('click', () => store.goToToday());
 
-    // View Switcher
     this.container.querySelectorAll('.view-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const mode = e.currentTarget.dataset.view;
@@ -134,23 +144,27 @@ export const HeaderView = {
       });
     });
 
-    // Sync Button (Forces immediate fresh database fetch)
     this.container.querySelector('#btn-sync-now').addEventListener('click', () => {
       store.syncNow();
     });
 
-    // Auth & Profile Button
+    // Governance Button (Admin Only)
+    const govBtn = this.container.querySelector('#btn-open-governance');
+    if (govBtn) {
+      govBtn.addEventListener('click', () => {
+        AdminGovernanceModal.open();
+      });
+    }
+
     this.container.querySelector('#btn-auth-profile').addEventListener('click', () => {
       AuthModal.open();
     });
 
-    // Theme Toggle
     this.container.querySelector('#btn-theme-toggle').addEventListener('click', () => {
       const nextTheme = state.theme === 'light' ? 'dark' : state.theme === 'dark' ? 'system' : 'light';
       store.setTheme(nextTheme);
     });
 
-    // Quick Add Button
     this.container.querySelector('#btn-quick-add').addEventListener('click', () => {
       ActivityModal.openNew(DateUtils.formatDateKey(new Date()));
     });

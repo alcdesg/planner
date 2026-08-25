@@ -1,6 +1,6 @@
 /* ==========================================================================
    ORGANIZADOR SEMANAL - MAIN STYLESHEET
-   iOS Aqua Translucent / Liquid Glassmorphism Design System
+   iOS Aqua Translucent / Liquid Glassmorphism Design System with RBAC
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -149,6 +149,25 @@ textarea:focus-visible {
   -webkit-text-fill-color: transparent;
 }
 
+/* Admin Role Badge */
+.admin-role-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.3));
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.04em;
+}
+
+[data-theme="dark"] .admin-role-badge {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
 /* Navigation Controls (Week & Today) */
 .week-nav {
   display: flex;
@@ -257,6 +276,26 @@ textarea:focus-visible {
   50% { opacity: 0.5; }
 }
 
+/* Governance Button (Admin Only) */
+.governance-btn {
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.governance-btn:hover {
+  background: rgba(245, 158, 11, 0.22);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .governance-btn {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.2);
+}
+
 /* User Profile Trigger */
 .user-selector-btn {
   padding: 4px 10px 4px 5px;
@@ -299,7 +338,7 @@ textarea:focus-visible {
   color: var(--text-primary);
 }
 
-/* Primary Action Button (iOS Tint Glass) */
+/* Primary Action Button */
 .btn-primary {
   background: linear-gradient(135deg, #007aff, #0a84ff);
   color: #ffffff;
@@ -315,10 +354,6 @@ textarea:focus-visible {
   box-shadow: 0 8px 24px rgba(0, 122, 255, 0.45);
 }
 
-.btn-primary:active {
-  transform: translateY(0);
-}
-
 /* --------------------------------------------------------------------------
    Main Content Area
    -------------------------------------------------------------------------- */
@@ -330,7 +365,7 @@ textarea:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Weekly Board Grid (iOS Frosted Columns)
+   Weekly Board Grid
    -------------------------------------------------------------------------- */
 .week-grid {
   display: grid;
@@ -465,7 +500,7 @@ textarea:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Activity Card Component (iOS Frosted Tactile Card)
+   Activity Card Component
    -------------------------------------------------------------------------- */
 .activity-card {
   background: var(--bg-glass-card);
@@ -598,7 +633,7 @@ textarea:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Habit Tracker View Styles (iOS Translucent Matrix)
+   Habit Tracker View Styles
    -------------------------------------------------------------------------- */
 .habits-view-container {
   max-width: 1240px;
@@ -847,7 +882,7 @@ textarea:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Weekly Meal Planner Styles (iOS Frosted Columns)
+   Weekly Meal Planner Styles
    -------------------------------------------------------------------------- */
 .meals-view-container {
   display: flex;
@@ -1020,7 +1055,7 @@ textarea:focus-visible {
 }
 
 /* --------------------------------------------------------------------------
-   Modal Components (iOS Translucent Floating Sheet)
+   Modal Components
    -------------------------------------------------------------------------- */
 .modal-backdrop {
   position: fixed;
@@ -1187,26 +1222,8 @@ textarea:focus-visible {
   background-color: rgba(239, 68, 68, 0.2);
 }
 
-.prompt-choice-btn {
-  padding: 12px 16px;
-  border-radius: var(--radius-lg);
-  border: 1.5px solid var(--border-glass-subtle);
-  background: var(--bg-glass-card);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all var(--transition-fast);
-  width: 100%;
-}
-
-.prompt-choice-btn:hover {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-light);
-  transform: translateY(-2px);
-}
-
 /* --------------------------------------------------------------------------
-   Mobile Adaptations & Responsiveness
+   Mobile Adaptations
    -------------------------------------------------------------------------- */
 .mobile-day-tabs {
   display: none;

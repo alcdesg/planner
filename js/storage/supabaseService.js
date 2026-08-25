@@ -1,7 +1,6 @@
 /**
  * @file supabaseService.js
- * Direct PostgreSQL backend data operations using Supabase with Row Level Security.
- * Provides authentication, live sync, and CRUD without local caching.
+ * Direct PostgreSQL backend data operations using Supabase with Row Level Security and RBAC.
  */
 
 import { supabaseConfig } from '../config/supabaseClient.js';
@@ -9,7 +8,7 @@ import { StorageService } from './storage.js';
 
 export const SupabaseService = {
   /* ------------------------------------------------------------------------
-     Auth Operations
+     Auth & Profile Operations
      ------------------------------------------------------------------------ */
   async getCurrentSession() {
     const client = supabaseConfig.getClient();
@@ -37,20 +36,21 @@ export const SupabaseService = {
     }
   },
 
-  async signUp(email, password, name) {
+  async fetchUserProfile(userId) {
     const client = supabaseConfig.getClient();
-    if (!client) throw new Error('Supabase não está configurado.');
-
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name }
-      }
-    });
-
-    if (error) throw error;
-    return data;
+    if (!client || !userId) return null;
+    try {
+      const { data, error } = await client
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn('Failed to fetch user profile:', e);
+      return null;
+    }
   },
 
   async signIn(email, password) {
@@ -58,8 +58,8 @@ export const SupabaseService = {
     if (!client) throw new Error('Supabase não está configurado.');
 
     const { data, error } = await client.auth.signInWithPassword({
-      email,
-      password
+      email: email.trim(),
+      password: password.trim()
     });
 
     if (error) throw error;
@@ -75,11 +75,62 @@ export const SupabaseService = {
 
   onAuthStateChange(callback) {
     const client = supabaseConfig.getClient();
-    if (!client) return { unsubscribe: () => {} };
+    if (!client) return { unsubscribe: () => { } };
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       callback(event, session);
     });
     return subscription;
+  },
+
+  /* ------------------------------------------------------------------------
+     Admin Governance (Available ONLY for Admin Role)
+     ------------------------------------------------------------------------ */
+  async fetchAllProfiles() {
+    const client = supabaseConfig.getClient();
+    if (!client) return [];
+
+    const { data, error } = await client
+      .from('user_profiles')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching all profiles (admin only):', error);
+      throw error;
+    }
+    return data || [];
+  },
+
+  async createManagedUser({ email, password, name, role }) {
+    const client = supabaseConfig.getClient();
+    if (!client) throw new Error('Supabase não está configurado.');
+
+    // Uses signUp with metadata
+    const { data, error } = await client.auth.signUp({
+      email: email.trim(),
+      password: password.trim(),
+      options: {
+        data: {
+          name: name.trim(),
+          role: role || 'member'
+        }
+      }
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      // Ensure profile role is explicitly recorded
+      await client.from('user_profiles').upsert({
+        id: data.user.id,
+        email: email.trim(),
+        name: name.trim(),
+        role: role || 'member',
+        theme: 'system'
+      });
+    }
+
+    return data;
   },
 
   /* ------------------------------------------------------------------------
@@ -99,7 +150,6 @@ export const SupabaseService = {
       throw error;
     }
 
-    // Map DB snake_case to domain camelCase
     return (data || []).map(row => ({
       id: row.id,
       userId: row.user_id,
@@ -304,9 +354,9 @@ export const SupabaseService = {
     (data || []).forEach(row => {
       mealsMap[row.date_key] = {
         breakfast: row.breakfast || { text: '', completed: false },
-        lunch:     row.lunch     || { text: '', completed: false },
-        snack:     row.snack     || { text: '', completed: false },
-        dinner:    row.dinner    || { text: '', completed: false }
+        lunch: row.lunch || { text: '', completed: false },
+        snack: row.snack || { text: '', completed: false },
+        dinner: row.dinner || { text: '', completed: false }
       };
     });
     return mealsMap;
@@ -320,9 +370,9 @@ export const SupabaseService = {
       id: `meal_${dateKey}`,
       date_key: dateKey,
       breakfast: dayData.breakfast || { text: '', completed: false },
-      lunch:     dayData.lunch     || { text: '', completed: false },
-      snack:     dayData.snack     || { text: '', completed: false },
-      dinner:    dayData.dinner    || { text: '', completed: false },
+      lunch: dayData.lunch || { text: '', completed: false },
+      snack: dayData.snack || { text: '', completed: false },
+      dinner: dayData.dinner || { text: '', completed: false },
       updated_at: new Date().toISOString()
     };
 
