@@ -1,35 +1,41 @@
 /**
  * @file models.js
- * Domain entities, constants, and bulletproof ISO date utilities for Organizador Semanal.
- * Operating in strict ISO YYYY-MM-DD format to guarantee zero timezone offset bugs.
+ * Domain constants, Category definitions, and Date manipulation utilities.
+ * Enforces RFC-4122 UUID v4 generation for universal database alignment.
  */
 
 export const CATEGORIES = {
-  trabalho: { id: 'trabalho', label: 'Trabalho', icon: '💼' },
-  casa: { id: 'casa', label: 'Casa', icon: '🏠' },
-  pessoal: { id: 'pessoal', label: 'Pessoal', icon: '⭐' },
-  saude: { id: 'saude', label: 'Saúde', icon: '❤️' },
-  compromisso: { id: 'compromisso', label: 'Compromisso', icon: '📅' },
-  outros: { id: 'outros', label: 'Outros', icon: '📌' }
+  trabalho:    { id: 'trabalho',    label: 'Trabalho',     icon: '💼' },
+  casa:        { id: 'casa',        label: 'Casa',         icon: '🏠' },
+  pessoal:     { id: 'pessoal',     label: 'Pessoal',      icon: '👤' },
+  saude:       { id: 'saude',       label: 'Saúde',        icon: '💪' },
+  compromisso: { id: 'compromisso', label: 'Compromisso',  icon: '📅' },
+  outros:      { id: 'outros',      label: 'Outros',       icon: '📌' }
 };
 
 export const RECURRENCE_TYPES = {
   NONE: 'none',
-  CUSTOM_DAYS: 'custom_days', // Specific days of the week (e.g. Ter, Qua, Qui)
   DAILY: 'daily',
-  WEEKDAYS: 'weekdays', // Seg a Sex
-  WEEKLY: 'weekly',
-  MONTHLY: 'monthly'
+  WEEKDAYS: 'weekdays',
+  CUSTOM_DAYS: 'custom_days'
 };
 
 export const RECURRENCE_LABELS = {
-  none: 'Não repete',
-  custom_days: 'Dias específicos da semana (Outlook)',
-  weekdays: 'Segunda a Sexta (dias úteis)',
+  none: 'Não se repete',
   daily: 'Todos os dias',
-  weekly: 'Semanalmente (mesmo dia da semana)',
-  monthly: 'Mensalmente (mesmo dia do mês)'
+  weekdays: 'Dias úteis (Seg-Sex)',
+  custom_days: 'Personalizado'
 };
+
+export const WEEKDAY_OPTIONS = [
+  { value: 1, label: 'Seg' },
+  { value: 2, label: 'Ter' },
+  { value: 3, label: 'Qua' },
+  { value: 4, label: 'Qui' },
+  { value: 5, label: 'Sex' },
+  { value: 6, label: 'Sáb' },
+  { value: 0, label: 'Dom' }
+];
 
 export const ACTIVITY_STATUS = {
   PENDING: 'pending',
@@ -37,126 +43,98 @@ export const ACTIVITY_STATUS = {
 };
 
 /**
- * Days of week definition with JS getDay() indices:
- * 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb, 0 = Dom
- */
-export const WEEKDAY_OPTIONS = [
-  { dayIndex: 1, shortLabel: 'SEG', fullLabel: 'Segunda-feira' },
-  { dayIndex: 2, shortLabel: 'TER', fullLabel: 'Terça-feira' },
-  { dayIndex: 3, shortLabel: 'QUA', fullLabel: 'Quarta-feira' },
-  { dayIndex: 4, shortLabel: 'QUI', fullLabel: 'Quinta-feira' },
-  { dayIndex: 5, shortLabel: 'SEX', fullLabel: 'Sexta-feira' },
-  { dayIndex: 6, shortLabel: 'SÁB', fullLabel: 'Sábado' },
-  { dayIndex: 0, shortLabel: 'DOM', fullLabel: 'Domingo' }
-];
-
-/**
- * Generate a unique ID
+ * Generates an RFC-4122 compliant UUID v4 string.
+ * Aligned with PostgreSQL gen_random_uuid().
+ * @returns {string}
  */
 export function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback RFC-4122 v4 compliant generator
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }
 
 /**
- * Robust ISO date helper utilities (Strict YYYY-MM-DD strings with zero timezone offset shifts)
+ * Pure timezone-safe Date utilities using local calendar day operations
  */
 export const DateUtils = {
-  /**
-   * Format any Date object or string into canonical YYYY-MM-DD string
-   */
+  dayNamesShort: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+  dayNamesFull: ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'],
+
   formatDateKey(date) {
-    if (!date) return '';
     if (typeof date === 'string') {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        return date;
-      }
+      return date.slice(0, 10);
     }
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   },
 
-  /**
-   * Parse YYYY-MM-DD safely into local noon Date object
-   */
-  parseDateKey(dateStr) {
-    if (!dateStr) return new Date();
-    if (dateStr instanceof Date) {
-      const d = new Date(dateStr);
-      d.setHours(12, 0, 0, 0);
-      return d;
-    }
-    const parts = String(dateStr).split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      return new Date(year, month, day, 12, 0, 0);
-    }
-    const d = new Date(dateStr);
-    d.setHours(12, 0, 0, 0);
-    return d;
+  parseDateKey(dateKey) {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0);
   },
 
-  /**
-   * Get start of week (Monday) for any given date in local time
-   */
   getMondayOfWeek(date) {
-    const d = this.parseDateKey(date);
-    const day = d.getDay(); // 0 is Sunday, 1 is Monday...
-    const diff = (day === 0 ? -6 : 1) - day;
-    d.setDate(d.getDate() + diff);
+    const d = typeof date === 'string' ? this.parseDateKey(date) : new Date(date);
     d.setHours(12, 0, 0, 0);
-    return d;
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    monday.setHours(12, 0, 0, 0);
+    return monday;
   },
 
-  /**
-   * Returns array of 7 Date objects for the given week (Monday to Sunday)
-   */
-  getWeekDays(startMonday) {
+  getWeekDays(mondayDate) {
     const days = [];
-    const monday = this.parseDateKey(startMonday);
+    const monday = typeof mondayDate === 'string' ? this.parseDateKey(mondayDate) : new Date(mondayDate);
+    monday.setHours(12, 0, 0, 0);
+
     for (let i = 0; i < 7; i++) {
-      const nextDay = new Date(monday);
-      nextDay.setDate(monday.getDate() + i);
-      nextDay.setHours(12, 0, 0, 0);
-      days.push(nextDay);
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      day.setHours(12, 0, 0, 0);
+      days.push(day);
     }
     return days;
   },
 
-  /**
-   * Check if two dates represent the same calendar day using strict string keys
-   */
   isSameDay(date1, date2) {
-    if (!date1 || !date2) return false;
     return this.formatDateKey(date1) === this.formatDateKey(date2);
   },
 
-  /**
-   * Format week range (e.g. "24 — 30 AGO" or "28 FEV — 06 MAR 2026")
-   */
-  formatWeekRange(monday) {
-    const mon = this.parseDateKey(monday);
-    const sunday = new Date(mon);
-    sunday.setDate(mon.getDate() + 6);
-
-    const monthNames = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-    const startDay = String(mon.getDate()).padStart(2, '0');
-    const endDay = String(sunday.getDate()).padStart(2, '0');
-
-    const startMonth = monthNames[mon.getMonth()];
-    const endMonth = monthNames[sunday.getMonth()];
-
-    if (startMonth === endMonth) {
-      return `${startDay} — ${endDay} ${startMonth} ${sunday.getFullYear()}`;
-    } else {
-      return `${startDay} ${startMonth} — ${endDay} ${endMonth} ${sunday.getFullYear()}`;
-    }
+  formatDisplayDate(date) {
+    const d = typeof date === 'string' ? this.parseDateKey(date) : date;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}`;
   },
 
-  dayNamesShort: ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'],
-  dayNamesFull: ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo']
+  formatWeekRange(mondayDate) {
+    const weekDays = this.getWeekDays(mondayDate);
+    const firstDay = weekDays[0];
+    const lastDay = weekDays[6];
+
+    const monthNames = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ];
+
+    const d1 = firstDay.getDate();
+    const m1 = monthNames[firstDay.getMonth()];
+    const d2 = lastDay.getDate();
+    const m2 = monthNames[lastDay.getMonth()];
+    const y2 = lastDay.getFullYear();
+
+    if (firstDay.getMonth() === lastDay.getMonth()) {
+      return `${d1} a ${d2} de ${m1} de ${y2}`;
+    }
+    return `${d1} de ${m1} a ${d2} de ${m2} de ${y2}`;
+  }
 };
