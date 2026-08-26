@@ -85,14 +85,14 @@ export const SupabaseService = {
 
       if (data) return data;
 
-      // Safe auto-creation of base profile on first login (role defaults strictly to 'member')
+      // Safe auto-creation of base profile on first login (picks role from user metadata if defined)
       const currentUser = await this.getCurrentUser();
       if (currentUser && currentUser.id === userId) {
         const baseProfile = {
           id: userId,
           email: currentUser.email,
           name: Sanitizer.clampText(currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário', 150),
-          role: 'member',
+          role: currentUser.user_metadata?.role === 'admin' ? 'admin' : 'member',
           theme: 'system'
         };
 
@@ -182,13 +182,18 @@ export const SupabaseService = {
     const client = supabaseConfig.getClient();
     if (!client) throw new Error('Supabase não está configurado.');
 
+    const cleanEmail = email.trim();
+    const cleanPass = password.trim();
+    const cleanName = Sanitizer.clampText(name, 150) || cleanEmail.split('@')[0];
+    const targetRole = role === 'admin' ? 'admin' : 'member';
+
     const { data, error } = await client.auth.signUp({
-      email: email.trim(),
-      password: password.trim(),
+      email: cleanEmail,
+      password: cleanPass,
       options: {
         data: {
-          name: Sanitizer.clampText(name, 150),
-          role: role === 'admin' ? 'admin' : 'member'
+          name: cleanName,
+          role: targetRole
         }
       }
     });
@@ -196,13 +201,17 @@ export const SupabaseService = {
     if (error) throw error;
 
     if (data.user) {
-      await client.from('user_profiles').upsert({
-        id: data.user.id,
-        email: email.trim(),
-        name: Sanitizer.clampText(name, 150),
-        role: role === 'admin' ? 'admin' : 'member',
-        theme: 'system'
-      });
+      try {
+        await client.from('user_profiles').upsert({
+          id: data.user.id,
+          email: cleanEmail,
+          name: cleanName,
+          role: targetRole,
+          theme: 'system'
+        });
+      } catch (profileErr) {
+        console.warn('User profile creation will be finalized upon first sign-in:', profileErr);
+      }
     }
 
     return data;
