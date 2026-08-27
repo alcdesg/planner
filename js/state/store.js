@@ -5,11 +5,12 @@
  * Enforces session memory hygiene and transparent error states.
  */
 
-import { generateId, DateUtils, RECURRENCE_TYPES, ACTIVITY_STATUS } from '../domain/models.js';
+import { generateId, DateUtils, RECURRENCE_TYPES, ACTIVITY_STATUS, getAllCategories, getCategoryById } from '../domain/models.js';
 import { HabitUtils } from '../domain/habitsModel.js';
-import { MealUtils } from '../domain/mealPlanModel.js';
+import { MealUtils, DEFAULT_VISIBLE_MEAL_TYPES } from '../domain/mealPlanModel.js';
 import { supabaseConfig } from '../config/supabaseClient.js';
 import { SupabaseService } from '../storage/supabaseService.js';
+import { StorageService } from '../storage/storage.js';
 import { Sanitizer } from '../utils/sanitizer.js';
 
 class AppStore {
@@ -35,13 +36,15 @@ class AppStore {
     const currentDayOfWeek = today.getDay();
     this.activeMobileDayIndex = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
 
-    // 3. Theme
+    // 3. Theme & Preferences
     this.theme = 'system';
+    this.visibleMealTypes = [...DEFAULT_VISIBLE_MEAL_TYPES];
 
     // 4. Data lists (strictly isolated per user)
     this.activities = [];
     this.habits = [];
     this.meals = {};
+    this.customCategories = [];
 
     this.initAuth();
     this.applyTheme(this.theme);
@@ -57,6 +60,8 @@ class AppStore {
     this.activities = [];
     this.habits = [];
     this.meals = {};
+    this.customCategories = [];
+    this.visibleMealTypes = [...DEFAULT_VISIBLE_MEAL_TYPES];
     this.syncStatus = 'synced';
     this.syncErrorMessage = '';
     this.notify();
@@ -136,6 +141,8 @@ class AppStore {
       activities: this.activities,
       habits: this.habits,
       meals: this.meals,
+      customCategories: this.customCategories,
+      visibleMealTypes: this.visibleMealTypes,
       activeMobileDayIndex: this.activeMobileDayIndex
     };
   }
@@ -155,18 +162,24 @@ class AppStore {
 
     try {
       if (supabaseConfig.isConfigured()) {
-        const [activities, habits, meals, profile] = await Promise.all([
+        const [activities, habits, meals, customCategories, profile] = await Promise.all([
           SupabaseService.fetchActivities(),
           SupabaseService.fetchHabits(),
           SupabaseService.fetchMeals(),
+          SupabaseService.fetchCustomCategories(),
           SupabaseService.fetchUserProfile(this.currentUser.id)
         ]);
 
         this.activities = activities;
         this.habits = habits;
         this.meals = meals;
+        this.customCategories = customCategories || [];
         if (profile) this.userProfile = profile;
+        this.visibleMealTypes = StorageService.getVisibleMealTypes(this.currentUser.id);
         this.syncStatus = 'synced';
+      } else {
+        this.customCategories = StorageService.getCustomCategories(this.currentUser.id);
+        this.visibleMealTypes = StorageService.getVisibleMealTypes(this.currentUser.id);
       }
     } catch (e) {
       console.error('Sync failed:', e);
@@ -591,6 +604,73 @@ class AppStore {
       await Promise.all(updatePromises);
     } catch (e) {
       console.error('Error replicating meals:', e);
+    }
+  }
+
+  setVisibleMealTypes(types) {
+    if (!Array.isArray(types) || types.length === 0) {
+      types = [...DEFAULT_VISIBLE_MEAL_TYPES];
+    }
+    this.visibleMealTypes = types;
+    if (this.currentUser) {
+      StorageService.saveVisibleMealTypes(this.currentUser.id, types);
+    }
+    this.notify();
+  }
+
+  /* ------------------------------------------------------------------------
+     Category Helpers & Custom Categories Actions
+     ------------------------------------------------------------------------ */
+  getAllCategories() {
+    return getAllCategories(this.customCategories);
+  }
+
+  getCategoryById(id) {
+    return getCategoryById(id, this.customCategories);
+  }
+
+  async addCustomCategory({ name, icon }) {
+    if (!this.currentUser) return null;
+
+    const trimmedName = Sanitizer.clampText(name, 100).trim();
+    if (!trimmedName) return null;
+
+    const newCategory = {
+      id: generateId(),
+      userId: this.currentUser.id,
+      name: trimmedName,
+      icon: Sanitizer.clampText(icon || '📌', 20) || '📌',
+      createdAt: new Date().toISOString()
+    };
+
+    this.customCategories = [...this.customCategories, newCategory];
+    StorageService.saveCustomCategories(this.currentUser.id, this.customCategories);
+    this.notify();
+
+    try {
+      if (supabaseConfig.isConfigured()) {
+        await SupabaseService.insertCustomCategory(newCategory);
+      }
+    } catch (e) {
+      console.error('Error saving custom category:', e);
+    }
+
+    return newCategory;
+  }
+
+  async deleteCustomCategory(id) {
+    if (!this.currentUser) return;
+
+    this.customCategories = this.customCategories.filter(c => c.id !== id);
+    StorageService.saveCustomCategories(this.currentUser.id, this.customCategories);
+    this.notify();
+
+    try {
+      if (supabaseConfig.isConfigured()) {
+        await SupabaseService.deleteCustomCategory(id);
+      }
+    } catch (e) {
+      console.error('Error deleting custom category:', e);
     }
   }
 }

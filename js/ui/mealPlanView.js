@@ -1,11 +1,5 @@
-/**
- * @file mealPlanView.js
- * Weekly Meal Planner View Controller.
- * 7-day grid with checkboxes for each meal, quick week replication, and canonical DOM sanitization.
- */
-
 import { DateUtils } from '../domain/models.js';
-import { MEAL_TYPES, MealUtils } from '../domain/mealPlanModel.js';
+import { MEAL_TYPES, MealUtils, DEFAULT_VISIBLE_MEAL_TYPES } from '../domain/mealPlanModel.js';
 import { store } from '../state/store.js';
 import { Sanitizer } from '../utils/sanitizer.js';
 
@@ -37,6 +31,10 @@ export const MealPlanView = {
     if (!this.container) return;
 
     const { weekDays, meals, todayDate, currentMonday } = state;
+    const visibleTypes = state.visibleMealTypes && state.visibleMealTypes.length > 0
+      ? state.visibleMealTypes
+      : DEFAULT_VISIBLE_MEAL_TYPES;
+    const activeMealDefs = visibleTypes.map(t => MEAL_TYPES[t]).filter(Boolean);
 
     this.container.innerHTML = `
       <div class="meals-view-container">
@@ -45,8 +43,11 @@ export const MealPlanView = {
             <h2 class="meals-title">🥗 Plano Alimentar Semanal</h2>
             <div class="meals-subtitle">Semana de ${Sanitizer.escape(DateUtils.formatWeekRange(currentMonday))}</div>
           </div>
-          <div style="font-size: 0.82rem; color: var(--text-muted);">
-            Clique em qualquer refeição para editar ou marque o check conforme consumir.
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" class="btn-secondary" id="btn-open-meal-settings" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;">
+              <span>⚙️</span>
+              <span>Refeições Visíveis</span>
+            </button>
           </div>
         </div>
 
@@ -71,7 +72,7 @@ export const MealPlanView = {
                 </div>
 
                 <div class="meal-day-body">
-                  ${Object.values(MEAL_TYPES).map(type => {
+                  ${activeMealDefs.map(type => {
                     const item = dayMeals[type.id] || { text: '', completed: false };
                     const hasText = !!item.text.trim();
                     const safeTypeId = Sanitizer.escape(type.id);
@@ -114,6 +115,10 @@ export const MealPlanView = {
   },
 
   attachEvents() {
+    this.container.querySelector('#btn-open-meal-settings')?.addEventListener('click', () => {
+      this.openMealSettingsModal();
+    });
+
     this.container.querySelectorAll('[data-toggle-meal]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -151,6 +156,86 @@ export const MealPlanView = {
 
   isModalOpen() {
     return this.modalContainer && this.modalContainer.classList.contains('open');
+  },
+
+  openMealSettingsModal() {
+    const state = store.getState();
+    const visibleTypes = state.visibleMealTypes || DEFAULT_VISIBLE_MEAL_TYPES;
+
+    this.modalContainer.innerHTML = `
+      <div class="modal-dialog aqua-glass" role="dialog" aria-modal="true" style="max-width: 480px;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.3rem;">⚙️</span>
+            <div>
+              <h2 class="modal-title">Refeições Visíveis</h2>
+              <span class="modal-subtitle">Escolha quais refeições acompanhar na grade semanal</span>
+            </div>
+          </div>
+          <button type="button" class="modal-close-btn" id="meal-settings-close">&times;</button>
+        </div>
+
+        <form id="meal-settings-form">
+          <div class="modal-body">
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+              Marque as refeições que fazem parte da sua rotina diária (ex: lanche da manhã, ceia):
+            </p>
+
+            <div class="meal-settings-grid">
+              ${Object.values(MEAL_TYPES).map(type => {
+                const isChecked = visibleTypes.includes(type.id);
+                const safeId = Sanitizer.escape(type.id);
+                const safeLabel = Sanitizer.escape(type.label);
+                const safeIcon = Sanitizer.escape(type.icon);
+
+                return `
+                  <label class="meal-toggle-item" for="chk-meal-${safeId}">
+                    <input
+                      type="checkbox"
+                      id="chk-meal-${safeId}"
+                      name="visibleMeals"
+                      value="${safeId}"
+                      ${isChecked ? 'checked' : ''}
+                    />
+                    <span>${safeIcon}</span>
+                    <span>${safeLabel}</span>
+                  </label>
+                `;
+              }).join('')}
+            </div>
+
+            <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 8px;">
+              💡 Os dados de refeições desmarcadas não são apagados; apenas ficam ocultos na visualização.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="btn-cancel-meal-settings">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar Preferências</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    this.modalContainer.querySelector('#meal-settings-close')?.addEventListener('click', () => this.closeModal());
+    this.modalContainer.querySelector('#btn-cancel-meal-settings')?.addEventListener('click', () => this.closeModal());
+
+    const form = this.modalContainer.querySelector('#meal-settings-form');
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const checkedBoxes = this.modalContainer.querySelectorAll('input[name="visibleMeals"]:checked');
+      const selected = Array.from(checkedBoxes).map(cb => cb.value);
+
+      if (selected.length === 0) {
+        alert('Selecione ao menos 1 refeição para exibir.');
+        return;
+      }
+
+      store.setVisibleMealTypes(selected);
+      this.closeModal();
+    });
+
+    this.modalContainer.classList.add('open');
   },
 
   openMealModal(dateKey, mealType) {
@@ -263,3 +348,4 @@ export const MealPlanView = {
     });
   }
 };
+

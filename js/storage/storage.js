@@ -217,6 +217,57 @@ export const StorageService = {
   },
 
   /* ------------------------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     Custom Categories Storage
+     ------------------------------------------------------------------------ */
+  getCustomCategories(userId) {
+    try {
+      const key = `${STORAGE_PREFIX}:user:${userId}:custom_categories`;
+      const data = localStorage.getItem(key);
+      if (data !== null) {
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error(`Failed to load custom categories for user ${userId}`, e);
+    }
+    return [];
+  },
+
+  saveCustomCategories(userId, categories) {
+    try {
+      const key = `${STORAGE_PREFIX}:user:${userId}:custom_categories`;
+      localStorage.setItem(key, JSON.stringify(categories));
+    } catch (e) {
+      console.error(`Failed to save custom categories for user ${userId}`, e);
+    }
+  },
+
+  /* ------------------------------------------------------------------------
+     Meal Types Preference Storage
+     ------------------------------------------------------------------------ */
+  getVisibleMealTypes(userId) {
+    try {
+      const key = `${STORAGE_PREFIX}:user:${userId}:visible_meal_types`;
+      const data = localStorage.getItem(key);
+      if (data !== null) {
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error(`Failed to load visible meal types for user ${userId}`, e);
+    }
+    return ['breakfast', 'lunch', 'snack', 'dinner'];
+  },
+
+  saveVisibleMealTypes(userId, mealTypes) {
+    try {
+      const key = `${STORAGE_PREFIX}:user:${userId}:visible_meal_types`;
+      localStorage.setItem(key, JSON.stringify(mealTypes));
+    } catch (e) {
+      console.error(`Failed to save visible meal types for user ${userId}`, e);
+    }
+  },
+
+  /* ------------------------------------------------------------------------
      Settings Storage
      ------------------------------------------------------------------------ */
   getUserSettings(userId) {

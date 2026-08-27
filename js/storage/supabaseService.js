@@ -419,6 +419,70 @@ export const SupabaseService = {
   },
 
   /* ------------------------------------------------------------------------
+     Custom Categories DB Operations (Isolated per user_id)
+     ------------------------------------------------------------------------ */
+  async fetchCustomCategories() {
+    const client = supabaseConfig.getClient();
+    if (!client) return [];
+
+    const { data, error } = await client
+      .from('custom_categories')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.warn('Custom categories table might not exist yet or query failed:', error);
+      return [];
+    }
+
+    return (data || []).map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      name: Sanitizer.clampText(row.name, 100),
+      icon: Sanitizer.clampText(row.icon || '📌', 20),
+      createdAt: row.created_at
+    }));
+  },
+
+  async insertCustomCategory(category) {
+    const client = supabaseConfig.getClient();
+    if (!client) throw new Error('Supabase client offline.');
+
+    const row = {
+      id: category.id,
+      name: Sanitizer.clampText(category.name, 100),
+      icon: Sanitizer.clampText(category.icon || '📌', 20)
+    };
+
+    const { data, error } = await client
+      .from('custom_categories')
+      .insert(row)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error inserting custom category in Supabase:', error);
+      throw error;
+    }
+    return data;
+  },
+
+  async deleteCustomCategory(id) {
+    const client = supabaseConfig.getClient();
+    if (!client) throw new Error('Supabase client offline.');
+
+    const { error } = await client
+      .from('custom_categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting custom category from Supabase:', error);
+      throw error;
+    }
+  },
+
+  /* ------------------------------------------------------------------------
      Meal Plans DB Operations (Unique per user_id, date_key)
      ------------------------------------------------------------------------ */
   async fetchMeals() {
@@ -437,10 +501,12 @@ export const SupabaseService = {
     const mealsMap = {};
     (data || []).forEach(row => {
       mealsMap[row.date_key] = {
-        breakfast: row.breakfast || { text: '', completed: false },
-        lunch:     row.lunch     || { text: '', completed: false },
-        snack:     row.snack     || { text: '', completed: false },
-        dinner:    row.dinner    || { text: '', completed: false }
+        breakfast:     row.breakfast     || { text: '', completed: false },
+        morning_snack: row.morning_snack || { text: '', completed: false },
+        lunch:         row.lunch         || { text: '', completed: false },
+        snack:         row.snack         || { text: '', completed: false },
+        dinner:        row.dinner        || { text: '', completed: false },
+        supper:        row.supper        || { text: '', completed: false }
       };
     });
     return mealsMap;
@@ -452,10 +518,12 @@ export const SupabaseService = {
 
     const row = {
       date_key: dateKey,
-      breakfast: dayData.breakfast || { text: '', completed: false },
-      lunch:     dayData.lunch     || { text: '', completed: false },
-      snack:     dayData.snack     || { text: '', completed: false },
-      dinner:    dayData.dinner    || { text: '', completed: false },
+      breakfast:     dayData.breakfast     || { text: '', completed: false },
+      morning_snack: dayData.morning_snack || { text: '', completed: false },
+      lunch:         dayData.lunch         || { text: '', completed: false },
+      snack:         dayData.snack         || { text: '', completed: false },
+      dinner:        dayData.dinner        || { text: '', completed: false },
+      supper:        dayData.supper        || { text: '', completed: false },
       updated_at: new Date().toISOString()
     };
 
@@ -469,3 +537,4 @@ export const SupabaseService = {
     }
   }
 };
+

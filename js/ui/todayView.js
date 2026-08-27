@@ -81,7 +81,7 @@ export const TodayView = {
   },
 
   renderCard(activity, dateKey) {
-    const category = CATEGORIES[activity.category] || CATEGORIES.outros;
+    const category = store.getCategoryById(activity.category);
     const isCompleted = !!activity.isCompleted;
     const isRecurring = activity.recurrence && activity.recurrence !== RECURRENCE_TYPES.NONE;
 

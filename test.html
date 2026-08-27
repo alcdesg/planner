@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Organizador Semanal - Suíte de Testes Automatizados & Segurança</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="css/tokens.css" />
   <style>
     body {
@@ -162,11 +163,29 @@
     logTest(HabitUtils.isCompletedOnDate(hab, '2026-08-24'), 'Habit Tracker: Toggle de conclusão diária');
     logTest(HabitUtils.getWeeklyStats(hab, DateUtils.getWeekDays('2026-08-24')).completedCount === 1, 'Habit Tracker: Cálculo de estatística semanal');
 
-    // 4. Meal Plan Tests
+    // 4. Meal Plan Tests (Expanded 6 meals)
     const emptyMeal = MealUtils.getEmptyDayMeals();
-    logTest(emptyMeal.breakfast.completed === false, 'Meal Planner: Estado inicial de refeições');
+    logTest(
+      emptyMeal.breakfast.completed === false &&
+      emptyMeal.morning_snack.completed === false &&
+      emptyMeal.lunch.completed === false &&
+      emptyMeal.snack.completed === false &&
+      emptyMeal.dinner.completed === false &&
+      emptyMeal.supper.completed === false,
+      'Meal Planner: Suporte a 6 refeições (incluindo lanches opcionais)'
+    );
 
-    // 5. Security & Adversarial Tests
+    // 5. Custom Categories & Emoji Tests
+    import('./js/domain/models.js').then(({ getAllCategories, getCategoryById }) => {
+      const customCats = [{ id: 'cat_rocket', name: 'Startup', icon: '🚀' }];
+      const allCats = getAllCategories(customCats);
+      logTest(allCats.cat_rocket && allCats.cat_rocket.icon === '🚀', 'Custom Categories: Criação com emoji livre 🚀');
+      logTest(allCats.trabalho && allCats.trabalho.icon === '💼', 'Custom Categories: Preservação das categorias padrão');
+      const resolved = getCategoryById('cat_rocket', customCats);
+      logTest(resolved.label === 'Startup' && resolved.icon === '🚀', 'Custom Categories: Resolução por ID');
+    });
+
+    // 6. Security & Adversarial Tests
     runSecurityTestSuite((res) => {
       logTest(res.status === 'PASS', res.name, true, res.details);
     });

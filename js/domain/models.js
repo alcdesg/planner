@@ -13,6 +13,40 @@ export const CATEGORIES = {
   outros:      { id: 'outros',      label: 'Outros',       icon: '📌' }
 };
 
+/**
+ * Merge system default categories with user's custom categories
+ */
+export function getAllCategories(customCategories = []) {
+  const result = { ...CATEGORIES };
+  if (Array.isArray(customCategories)) {
+    for (const cat of customCategories) {
+      if (cat && cat.id) {
+        result[cat.id] = {
+          id: cat.id,
+          label: cat.name || cat.label || 'Categoria',
+          icon: cat.icon || '📌',
+          isCustom: true
+        };
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Resolve a category by ID with safe fallback to 'outros'
+ */
+export function getCategoryById(id, customCategories = []) {
+  const all = getAllCategories(customCategories);
+  return all[id] || {
+    id: id || 'outros',
+    label: id || 'Outros',
+    icon: '📌',
+    isCustom: false
+  };
+}
+
+
 export const RECURRENCE_TYPES = {
   NONE: 'none',
   DAILY: 'daily',

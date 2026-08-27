@@ -4,15 +4,23 @@
  * Implements Outlook-style initial prompt for recurring items and attribute-safe DOM sanitization.
  */
 
-import { CATEGORIES, RECURRENCE_TYPES, RECURRENCE_LABELS, WEEKDAY_OPTIONS, DateUtils } from '../domain/models.js';
+import { CATEGORIES, RECURRENCE_TYPES, RECURRENCE_LABELS, WEEKDAY_OPTIONS, DateUtils, getAllCategories } from '../domain/models.js';
 import { store } from '../state/store.js';
 import { Sanitizer } from '../utils/sanitizer.js';
+
+const POPULAR_EMOJIS = [
+  '💼', '📚', '💻', '🎯', '🎨', '🏃', '🧘', '🚴',
+  '✈️', '🐾', '🍕', '☕', '💡', '💰', '🛒', '🎵',
+  '⭐', '🔥', '❤️', '⚡', '🏖️', '🎮', '🩺', '🚗'
+];
 
 export const ActivityModal = {
   container: null,
   currentEditingId: null,
   currentOccurrenceDate: null,
   currentEditScope: 'all', // 'this' | 'all'
+  isCreatingCategory: false,
+  selectedCategoryEmoji: '📌',
 
   init() {
     this.container = document.getElementById('activity-modal-container');
@@ -39,6 +47,8 @@ export const ActivityModal = {
     this.currentEditingId = null;
     this.currentOccurrenceDate = null;
     this.currentEditScope = 'all';
+    this.isCreatingCategory = false;
+    this.selectedCategoryEmoji = '📌';
 
     const defaultDate = initialDate || DateUtils.formatDateKey(new Date());
     const initialDayIndex = DateUtils.parseDateKey(defaultDate).getDay();
@@ -63,6 +73,8 @@ export const ActivityModal = {
 
     this.currentEditingId = activityId;
     this.currentOccurrenceDate = occurrenceDate || activity.date;
+    this.isCreatingCategory = false;
+    this.selectedCategoryEmoji = '📌';
 
     const isRecurring = activity.recurrence && activity.recurrence !== RECURRENCE_TYPES.NONE;
 
@@ -138,6 +150,8 @@ export const ActivityModal = {
   renderForm(activity, isEditing, scope) {
     const isThisScope = scope === 'this';
     const isRecurring = activity.recurrence && activity.recurrence !== RECURRENCE_TYPES.NONE;
+    const state = store.getState();
+    const customCategories = state.customCategories || [];
 
     const modalTitle = !isEditing
       ? 'Nova Atividade'
@@ -146,6 +160,7 @@ export const ActivityModal = {
       : 'Editar Série Completa';
 
     const selectedDays = activity.recurrenceDays || [];
+    const isCustomCatSelected = customCategories.some(c => c.id === activity.category);
 
     this.container.innerHTML = `
       <div class="modal-dialog aqua-glass" role="dialog" aria-modal="true">
@@ -197,14 +212,83 @@ export const ActivityModal = {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="activity-category-select">Categoria</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label class="form-label" for="activity-category-select" style="margin-bottom: 0;">Categoria</label>
+                <button type="button" class="btn-ghost" id="btn-toggle-custom-category" style="font-size: 0.75rem; padding: 2px 6px; color: var(--color-primary);">
+                  ➕ Nova Categoria
+                </button>
+              </div>
+
               <select id="activity-category-select" class="form-select">
-                ${Object.values(CATEGORIES).map(cat => `
-                  <option value="${Sanitizer.escape(cat.id)}" ${activity.category === cat.id ? 'selected' : ''}>
-                    ${Sanitizer.escape(cat.icon)} ${Sanitizer.escape(cat.label)}
-                  </option>
-                `).join('')}
+                <optgroup label="Categorias Padrão">
+                  ${Object.values(CATEGORIES).map(cat => `
+                    <option value="${Sanitizer.escape(cat.id)}" ${activity.category === cat.id ? 'selected' : ''}>
+                      ${Sanitizer.escape(cat.icon)} ${Sanitizer.escape(cat.label)}
+                    </option>
+                  `).join('')}
+                </optgroup>
+
+                ${customCategories.length > 0 ? `
+                  <optgroup label="Minhas Categorias">
+                    ${customCategories.map(cat => `
+                      <option value="${Sanitizer.escape(cat.id)}" ${activity.category === cat.id ? 'selected' : ''}>
+                        ${Sanitizer.escape(cat.icon || '📌')} ${Sanitizer.escape(cat.name)}
+                      </option>
+                    `).join('')}
+                  </optgroup>
+                ` : ''}
+
+                <option value="__new_category__">➕ Criar nova categoria personalizada...</option>
               </select>
+
+              <div id="custom-category-delete-wrap" style="display: ${isCustomCatSelected ? 'block' : 'none'}; margin-top: 4px; text-align: right;">
+                <button type="button" id="btn-delete-current-custom-cat" class="btn-ghost" style="font-size: 0.72rem; color: var(--color-danger); padding: 2px 4px;">
+                  🗑️ Excluir esta categoria personalizada
+                </button>
+              </div>
+
+              <!-- Painel de Criação de Categoria Personalizada -->
+              <div id="new-category-panel" class="custom-category-panel" style="display: none;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary);">
+                  Criar Categoria Personalizada
+                </div>
+
+                <div class="form-group" style="margin-bottom: 6px;">
+                  <input
+                    type="text"
+                    id="new-category-name-input"
+                    class="form-input"
+                    placeholder="Nome da categoria (ex: Faculdade, Finanças...)"
+                    maxlength="50"
+                  />
+                </div>
+
+                <div class="emoji-picker-container">
+                  <div style="font-size: 0.75rem; color: var(--text-secondary);">Escolha ou digite um emoji:</div>
+                  <div class="custom-emoji-preview-box">
+                    <div class="custom-emoji-preview-badge" id="emoji-preview-display">📌</div>
+                    <input
+                      type="text"
+                      id="custom-emoji-free-input"
+                      class="form-input"
+                      placeholder="Cole qualquer emoji..."
+                      maxlength="10"
+                      style="font-size: 0.9rem;"
+                    />
+                  </div>
+
+                  <div class="emoji-picker-grid">
+                    ${POPULAR_EMOJIS.map(emoji => `
+                      <button type="button" class="emoji-btn" data-emoji="${emoji}">${emoji}</button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px;">
+                  <button type="button" class="btn-secondary" id="btn-cancel-new-cat" style="padding: 4px 10px; font-size: 0.78rem;">Cancelar</button>
+                  <button type="button" class="btn-primary" id="btn-save-new-cat" style="padding: 4px 12px; font-size: 0.78rem;">Salvar Categoria</button>
+                </div>
+              </div>
             </div>
 
             ${!isThisScope ? `
@@ -265,6 +349,123 @@ export const ActivityModal = {
   attachFormEvents(activity, isEditing, scope) {
     this.container.querySelector('#activity-modal-close')?.addEventListener('click', () => this.close());
     this.container.querySelector('#btn-cancel-activity')?.addEventListener('click', () => this.close());
+
+    const categorySelect = this.container.querySelector('#activity-category-select');
+    const newCategoryPanel = this.container.querySelector('#new-category-panel');
+    const toggleNewCatBtn = this.container.querySelector('#btn-toggle-custom-category');
+    const cancelNewCatBtn = this.container.querySelector('#btn-cancel-new-cat');
+    const saveNewCatBtn = this.container.querySelector('#btn-save-new-cat');
+    const deleteCatWrap = this.container.querySelector('#custom-category-delete-wrap');
+    const deleteCurrentCatBtn = this.container.querySelector('#btn-delete-current-custom-cat');
+    const emojiPreview = this.container.querySelector('#emoji-preview-display');
+    const customEmojiInput = this.container.querySelector('#custom-emoji-free-input');
+    const newCatNameInput = this.container.querySelector('#new-category-name-input');
+
+    let currentSelectedEmoji = '📌';
+
+    const updateDeleteBtnVisibility = () => {
+      const selectedVal = categorySelect.value;
+      const state = store.getState();
+      const isCustom = (state.customCategories || []).some(c => c.id === selectedVal);
+      if (deleteCatWrap) {
+        deleteCatWrap.style.display = isCustom ? 'block' : 'none';
+      }
+    };
+
+    categorySelect?.addEventListener('change', (e) => {
+      if (e.target.value === '__new_category__') {
+        newCategoryPanel.style.display = 'flex';
+        newCatNameInput?.focus();
+        categorySelect.value = activity.category || 'trabalho';
+      } else {
+        updateDeleteBtnVisibility();
+      }
+    });
+
+    toggleNewCatBtn?.addEventListener('click', () => {
+      newCategoryPanel.style.display = newCategoryPanel.style.display === 'none' ? 'flex' : 'none';
+      if (newCategoryPanel.style.display === 'flex') {
+        newCatNameInput?.focus();
+      }
+    });
+
+    cancelNewCatBtn?.addEventListener('click', () => {
+      newCategoryPanel.style.display = 'none';
+      if (newCatNameInput) newCatNameInput.value = '';
+    });
+
+    // Emoji Grid Clicks
+    this.container.querySelectorAll('.emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emoji = btn.dataset.emoji;
+        currentSelectedEmoji = emoji;
+        if (emojiPreview) emojiPreview.textContent = emoji;
+        if (customEmojiInput) customEmojiInput.value = emoji;
+        this.container.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Custom Emoji Free Input
+    customEmojiInput?.addEventListener('input', (e) => {
+      const val = e.target.value.trim();
+      if (val) {
+        currentSelectedEmoji = val;
+        if (emojiPreview) emojiPreview.textContent = val;
+      }
+    });
+
+    // Save Custom Category Action
+    saveNewCatBtn?.addEventListener('click', async () => {
+      const name = newCatNameInput?.value?.trim();
+      if (!name) {
+        alert('Por favor, informe o nome da nova categoria.');
+        newCatNameInput?.focus();
+        return;
+      }
+
+      const newCat = await store.addCustomCategory({
+        name,
+        icon: currentSelectedEmoji || '📌'
+      });
+
+      if (newCat) {
+        // Re-render form keeping typed values
+        const currentTitle = this.container.querySelector('#activity-title-input')?.value || '';
+        const currentDate = this.container.querySelector('#activity-date-input')?.value || activity.date;
+        const currentTime = this.container.querySelector('#activity-time-input')?.value || '';
+        this.renderForm({
+          ...activity,
+          title: currentTitle,
+          date: currentDate,
+          time: currentTime,
+          category: newCat.id
+        }, isEditing, scope);
+      }
+    });
+
+    // Delete Custom Category Action
+    deleteCurrentCatBtn?.addEventListener('click', async () => {
+      const currentCatId = categorySelect.value;
+      const state = store.getState();
+      const cat = (state.customCategories || []).find(c => c.id === currentCatId);
+      if (!cat) return;
+
+      if (confirm(`Deseja excluir a categoria personalizada "${cat.name}"? As atividades existentes passarão a exibir "Outros".`)) {
+        await store.deleteCustomCategory(currentCatId);
+        // Re-render form with fallback category
+        const currentTitle = this.container.querySelector('#activity-title-input')?.value || '';
+        const currentDate = this.container.querySelector('#activity-date-input')?.value || activity.date;
+        const currentTime = this.container.querySelector('#activity-time-input')?.value || '';
+        this.renderForm({
+          ...activity,
+          title: currentTitle,
+          date: currentDate,
+          time: currentTime,
+          category: 'outros'
+        }, isEditing, scope);
+      }
+    });
 
     const recurrenceSelect = this.container.querySelector('#activity-recurrence-select');
     const customDaysGroup = this.container.querySelector('#custom-days-group');
@@ -347,3 +548,4 @@ export const ActivityModal = {
     }
   }
 };
+

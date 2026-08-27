@@ -116,15 +116,33 @@ assert(monthStats.completedCount === 2, 'Agosto deve ter 2 dias concluídos');
 assert(monthStats.percentage === 6, 'Consistência mensal de 2/31 deve ser 6%');
 
 // --------------------------------------------------------------------------
-// TEST GROUP 5: Weekly Meal Planner & Checkboxes
+// TEST GROUP 5: Weekly Meal Planner & Checkboxes (6 meals support)
 // --------------------------------------------------------------------------
-console.log('\n[5/6] Testando Plano Alimentar e Checkboxes...');
+console.log('\n[5/6] Testando Plano Alimentar e Checkboxes (com Lanches Opcionais)...');
 
 const emptyDay = MealUtils.getEmptyDayMeals();
 assert(emptyDay.breakfast.completed === false, 'Café da manhã inicia não concluído');
+assert(emptyDay.morning_snack.completed === false, 'Lanche da manhã inicia não concluído');
 assert(emptyDay.lunch.completed === false, 'Almoço inicia não concluído');
-assert(emptyDay.snack.completed === false, 'Lanche inicia não concluído');
+assert(emptyDay.snack.completed === false, 'Lanche da tarde inicia não concluído');
 assert(emptyDay.dinner.completed === false, 'Jantar inicia não concluído');
+assert(emptyDay.supper.completed === false, 'Ceia inicia não concluído');
+
+import { getAllCategories, getCategoryById } from '../js/domain/models.js';
+
+const customCats = [
+  { id: 'cat_facul', name: 'Faculdade', icon: '🎓' },
+  { id: 'cat_rocket', name: 'Startup', icon: '🚀' }
+];
+const allCats = getAllCategories(customCats);
+assert(allCats.cat_facul && allCats.cat_facul.icon === '🎓', 'getAllCategories mescla categoria personalizada com emoji livre 🎓');
+assert(allCats.trabalho && allCats.trabalho.icon === '💼', 'getAllCategories preserva categorias padrão');
+
+const resolvedFacul = getCategoryById('cat_facul', customCats);
+assert(resolvedFacul.label === 'Faculdade' && resolvedFacul.icon === '🎓', 'getCategoryById resolve categoria customizada corretamente');
+
+const resolvedFallback = getCategoryById('inexistente', customCats);
+assert(resolvedFallback.id === 'inexistente' || resolvedFallback.id === 'outros', 'getCategoryById possui fallback seguro para categorias inexistentes');
 
 // --------------------------------------------------------------------------
 // TEST GROUP 6: Adversarial Security & Architecture Tests

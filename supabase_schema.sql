@@ -100,14 +100,14 @@ create trigger trg_protect_user_profiles
   for each row execute function public.protect_user_profile_security_fields();
 
 
--- 6. TABELA DE ATIVIDADES (ACTIVITIES) COM RESTRIÇÕES ESTREITAS
+-- 6. TABELA DE ATIVIDADES (ACTIVITIES)
 create table if not exists public.activities (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
   title text not null check (length(trim(title)) > 0 and length(title) <= 255),
   date text not null check (date ~ '^\d{4}-\d{2}-\d{2}$'),
   time text check (time is null or time = '' or time ~ '^\d{2}:\d{2}$'),
-  category text not null default 'outros' check (category in ('trabalho', 'casa', 'pessoal', 'saude', 'compromisso', 'outros')),
+  category text not null default 'outros',
   status text not null default 'pending' check (status in ('pending', 'completed')),
   recurrence text not null default 'none' check (recurrence in ('none', 'daily', 'weekdays', 'custom_days')),
   recurrence_days jsonb default '[]'::jsonb,
@@ -118,6 +118,9 @@ create table if not exists public.activities (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Garantir que restrições fixas legadas de categorias sejam removidas para suportar categorias customizadas
+alter table public.activities drop constraint if exists activities_category_check;
 
 alter table public.activities enable row level security;
 
@@ -134,7 +137,31 @@ drop policy if exists "activities_delete" on public.activities;
 create policy "activities_delete" on public.activities for delete to authenticated using (auth.uid() = user_id);
 
 
--- 7. TABELA DE HÁBITOS (HABITS)
+-- 7. TABELA DE CATEGORIAS CUSTOMIZADAS (CUSTOM_CATEGORIES) - Multi-tenant RLS
+create table if not exists public.custom_categories (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  name text not null check (length(trim(name)) > 0 and length(name) <= 100),
+  icon text not null default '📌' check (length(icon) <= 20),
+  created_at timestamptz not null default now()
+);
+
+alter table public.custom_categories enable row level security;
+
+drop policy if exists "custom_categories_select" on public.custom_categories;
+create policy "custom_categories_select" on public.custom_categories for select to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "custom_categories_insert" on public.custom_categories;
+create policy "custom_categories_insert" on public.custom_categories for insert to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "custom_categories_update" on public.custom_categories;
+create policy "custom_categories_update" on public.custom_categories for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "custom_categories_delete" on public.custom_categories;
+create policy "custom_categories_delete" on public.custom_categories for delete to authenticated using (auth.uid() = user_id);
+
+
+-- 8. TABELA DE HÁBITOS (HABITS)
 create table if not exists public.habits (
   id text primary key,
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
@@ -160,18 +187,24 @@ drop policy if exists "habits_delete" on public.habits;
 create policy "habits_delete" on public.habits for delete to authenticated using (auth.uid() = user_id);
 
 
--- 8. TABELA DE PLANO ALIMENTAR (MEAL_PLANS) - UUID PK & UNIQUE (USER_ID, DATE_KEY)
+-- 9. TABELA DE PLANO ALIMENTAR (MEAL_PLANS) - UUID PK & UNIQUE (USER_ID, DATE_KEY)
 create table if not exists public.meal_plans (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
   date_key text not null check (date_key ~ '^\d{4}-\d{2}-\d{2}$'),
   breakfast jsonb not null default '{"text": "", "completed": false}'::jsonb,
+  morning_snack jsonb not null default '{"text": "", "completed": false}'::jsonb,
   lunch jsonb not null default '{"text": "", "completed": false}'::jsonb,
   snack jsonb not null default '{"text": "", "completed": false}'::jsonb,
   dinner jsonb not null default '{"text": "", "completed": false}'::jsonb,
+  supper jsonb not null default '{"text": "", "completed": false}'::jsonb,
   updated_at timestamptz not null default now(),
   constraint uq_user_meal_date unique (user_id, date_key)
 );
+
+-- Garantir adição segura e não-destrutiva de novas colunas em instâncias existentes
+alter table public.meal_plans add column if not exists morning_snack jsonb not null default '{"text": "", "completed": false}'::jsonb;
+alter table public.meal_plans add column if not exists supper jsonb not null default '{"text": "", "completed": false}'::jsonb;
 
 alter table public.meal_plans enable row level security;
 
@@ -188,7 +221,7 @@ drop policy if exists "meal_plans_delete" on public.meal_plans;
 create policy "meal_plans_delete" on public.meal_plans for delete to authenticated using (auth.uid() = user_id);
 
 
--- 9. ÍNDICES DE PERFORMANCE (PERFORMANCE ADVISOR ALIGNMENT)
+-- 10. ÍNDICES DE PERFORMANCE (PERFORMANCE ADVISOR ALIGNMENT)
 create index if not exists idx_activities_user_id on public.activities (user_id);
 create index if not exists idx_activities_user_date on public.activities (user_id, date);
 create index if not exists idx_habits_user_id on public.habits (user_id);
